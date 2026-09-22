@@ -1,0 +1,181 @@
+.compose-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 640px;
+}
+
+.compose-form label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.compose-form textarea {
+  font-weight: normal;
+  resize: vertical;
+}
+
+fieldset.post-type {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+fieldset.post-type legend {
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: var(--space-2);
+  padding: 0;
+}
+
+.post-type button.active {
+  background-color: var(--color-hover);
+  color: var(--color-bg);
+}
+
+.images {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.image-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.image-thumb {
+  position: relative;
+  width: 100px;
+  height: 100px;
+}
+
+.image-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+}
+
+.image-thumb button {
+  position: absolute;
+  bottom: 4px;
+  left: 4px;
+  right: 4px;
+  font-size: 11px;
+  padding: 2px 4px;
+}
+
+.image-add {
+  width: 100px;
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: normal;
+  cursor: pointer;
+}
+
+.image-add input {
+  display: none;
+}
+
+.tab-hint {
+  margin: 0;
+  font-size: 14px;
+  opacity: 0.75;
+  max-width: 60ch;
+}
+
+.image-count select {
+  width: auto;
+  min-width: 80px;
+  align-self: flex-start;
+}
+
+.prompt-slots {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.prompt-slots-title {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.prompt-slot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+}
+
+.prompt-slot-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.copy-button {
+  font-size: 13px;
+  padding: var(--space-1) var(--space-2);
+}
+
+.prompt-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  /* The author selects and copies this by hand if the clipboard API is
+     unavailable, so keep it plain selectable text rather than an input. */
+  user-select: text;
+  white-space: pre-wrap;
+}
+
+.prompt-slot-upload .image-add {
+  width: auto;
+  min-width: 140px;
+  height: 64px;
+  padding: 0 var(--space-3);
+}
+
+.send-button {
+  align-self: flex-start;
+}
+
+.success {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  align-items: flex-start;
+}
+
+.primary-link {
+  display: inline-block;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-hover);
+  color: var(--color-bg);
+}
+
+.primary-link:hover {
+  text-decoration: none;
+  filter: brightness(1.1);
+}

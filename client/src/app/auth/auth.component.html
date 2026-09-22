@@ -1,0 +1,12 @@
+<h1>Sign in</h1>
+
+<p class="placeholder" *ngIf="!authService.currentUser">
+  Connect your LinkedIn account to research, write, and publish posts directly from here.
+</p>
+<p class="placeholder" *ngIf="authService.currentUser">You're already signed in as {{ authService.currentUser.name }}.</p>
+
+<p *ngIf="error" class="error">Sign-in failed: {{ error }}</p>
+
+<button type="button" class="primary" *ngIf="!authService.currentUser" (click)="authService.login()">
+  Continue with LinkedIn
+</button>

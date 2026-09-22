@@ -1,0 +1,186 @@
+/* Global styles - pure vanilla CSS, no framework. */
+
+:root {
+  /* Default theme (Kiln) - overwritten at runtime by ThemeService via
+     document.documentElement.style, and initialized here so there is no
+     flash of unstyled/wrong-color content before Angular boots. */
+  --color-bg: #fbf7f2;
+  --color-text: #2b2119;
+  --color-hover: #a65a2e;
+
+  --font-sans: -apple-system, 'Segoe UI', system-ui, Roboto, sans-serif;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --space-5: 32px;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+
+  --border-color: color-mix(in srgb, var(--color-text) 15%, transparent);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+h1,
+h2,
+h3,
+h4,
+p {
+  margin: 0 0 var(--space-3);
+}
+
+a {
+  color: var(--color-hover);
+  text-decoration: none;
+}
+
+a:hover,
+a:focus-visible {
+  text-decoration: underline;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  border: 1px solid var(--color-hover);
+  background-color: transparent;
+  color: var(--color-text);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+button:hover,
+button:focus-visible {
+  background-color: var(--color-hover);
+  color: var(--color-bg);
+}
+
+button.primary {
+  background-color: var(--color-hover);
+  color: var(--color-bg);
+}
+
+button.primary:hover,
+button.primary:focus-visible {
+  filter: brightness(1.1);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+input[type='text'],
+input[type='email'],
+input[type='number'],
+input[type='time'],
+input[type='date'],
+input[type='datetime-local'],
+textarea,
+select {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  width: 100%;
+}
+
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--color-hover);
+  outline-offset: 1px;
+}
+
+input[type='color'] {
+  border: 1px solid var(--border-color);
+  padding: 2px;
+  width: 44px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  background: none;
+}
+
+/* Fluid, mobile-first layout container used app-wide. */
+.app-container {
+  width: 100%;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 var(--space-3);
+}
+
+@media (min-width: 640px) {
+  .app-container {
+    padding: 0 var(--space-4);
+  }
+}
+
+@media (min-width: 1024px) {
+  .app-container {
+    padding: 0 var(--space-5);
+  }
+}
+
+.card {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  background-color: var(--color-bg);
+}
+
+.error {
+  color: #a31545;
+}
+
+.placeholder {
+  opacity: 0.7;
+  max-width: 60ch;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

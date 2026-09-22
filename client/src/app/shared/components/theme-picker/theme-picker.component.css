@@ -1,0 +1,77 @@
+.theme-picker h3,
+.theme-picker h4 {
+  margin-bottom: var(--space-2);
+}
+
+.presets {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-2);
+}
+
+@media (min-width: 640px) {
+  .presets {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.swatch {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  border: 2px solid transparent;
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  font-weight: 500;
+}
+
+.swatch:hover {
+  filter: brightness(0.97);
+}
+
+.swatch.active {
+  border-style: solid;
+  box-shadow: 0 0 0 2px var(--color-hover);
+}
+
+.swatch-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  flex: none;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+.custom {
+  margin-top: var(--space-4);
+}
+
+.custom-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.custom-row label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: 13px;
+}
+
+.custom-row label > span {
+  font-weight: 500;
+}
+
+.custom-row label {
+  flex-direction: row;
+  align-items: center;
+}
+
+.custom-row label > span {
+  width: 90px;
+}
+
+.custom-row input[type='text'] {
+  width: 90px;
+}

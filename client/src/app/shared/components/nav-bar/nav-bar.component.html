@@ -1,0 +1,28 @@
+<header class="nav">
+  <div class="nav-inner app-container">
+    <a class="brand" routerLink="/compose">LinkedIn Automation</a>
+
+    <button
+      class="menu-toggle"
+      type="button"
+      [attr.aria-expanded]="isMenuOpen"
+      aria-controls="primary-nav"
+      (click)="toggleMenu()"
+    >
+      <span class="visually-hidden">Toggle menu</span>
+      <span class="bar"></span>
+      <span class="bar"></span>
+      <span class="bar"></span>
+    </button>
+
+    <nav id="primary-nav" class="links" [class.open]="isMenuOpen">
+      <a
+        *ngFor="let link of links"
+        [routerLink]="link.path"
+        routerLinkActive="active"
+        (click)="closeMenu()"
+        >{{ link.label }}</a
+      >
+    </nav>
+  </div>
+</header>
