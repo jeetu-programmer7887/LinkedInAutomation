@@ -58,10 +58,31 @@ export class ComposeComponent implements OnDestroy {
       this.releaseImages();
       this.images = [];
     }
-    if (type !== 'text_image_prompts') {
+    if (type === 'text_image_prompts') {
+      this.syncSlots();
+    } else {
       this.releaseSlotImages();
       this.slots = [];
     }
+  }
+
+  /**
+   * Keeps one slot per requested image so the upload boxes are visible
+   * straight away, before anything has been generated. Existing prompts
+   * and uploads survive a count change; only trimmed-off slots release
+   * their preview URLs.
+   */
+  syncSlots(): void {
+    const next: PromptSlot[] = [];
+    for (let i = 0; i < this.imageCount; i++) {
+      next.push(this.slots[i] ?? { prompt: '', image: null });
+    }
+    this.slots.slice(this.imageCount).forEach((slot) => {
+      if (slot.image) {
+        URL.revokeObjectURL(slot.image.previewUrl);
+      }
+    });
+    this.slots = next;
   }
 
   generateCaption(): void {
@@ -95,11 +116,14 @@ export class ComposeComponent implements OnDestroy {
     this.postService.generateCaptionWithImagePrompts(this.description.trim(), this.imageCount).subscribe({
       next: ({ caption, imagePrompts }) => {
         this.caption = caption;
-        // Carry already-uploaded images over to the matching slot so a
-        // regenerate doesn't throw away work the author has done.
-        const existing = this.slots.map((slot) => slot.image);
-        this.slots = imagePrompts.map((prompt, i) => ({ prompt, image: existing[i] ?? null }));
-        existing.slice(imagePrompts.length).forEach((img) => img && URL.revokeObjectURL(img.previewUrl));
+        // Fill the slots that are already on screen, so any images the
+        // author uploaded before generating stay where they are.
+        this.syncSlots();
+        imagePrompts.forEach((prompt, i) => {
+          if (this.slots[i]) {
+            this.slots[i].prompt = prompt;
+          }
+        });
         this.generating = false;
       },
       error: (err) => {

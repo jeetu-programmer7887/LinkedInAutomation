@@ -52,7 +52,7 @@
 
   <label class="image-count" *ngIf="postType === 'text_image_prompts'">
     <span>How many images?</span>
-    <select [(ngModel)]="imageCount" name="imageCount">
+    <select [(ngModel)]="imageCount" name="imageCount" (ngModelChange)="syncSlots()">
       <option *ngFor="let n of imageCountOptions" [ngValue]="n">{{ n }}</option>
     </select>
   </label>
@@ -101,18 +101,21 @@
     </div>
   </div>
 
-  <div class="prompt-slots" *ngIf="postType === 'text_image_prompts' && slots.length">
-    <span class="prompt-slots-title">Image prompts ({{ filledSlotCount }}/{{ slots.length }} uploaded)</span>
+  <div class="prompt-slots" *ngIf="postType === 'text_image_prompts'">
+    <span class="prompt-slots-title">Images ({{ filledSlotCount }}/{{ slots.length }} uploaded)</span>
 
     <div class="prompt-slot" *ngFor="let slot of slots; let i = index">
       <div class="prompt-slot-header">
         <strong>Image {{ i + 1 }}</strong>
-        <button type="button" class="copy-button" (click)="copyPrompt(i)">
+        <button type="button" class="copy-button" *ngIf="slot.prompt" (click)="copyPrompt(i)">
           {{ copiedIndex === i ? 'Copied!' : 'Copy prompt' }}
         </button>
       </div>
 
-      <p class="prompt-text">{{ slot.prompt }}</p>
+      <p class="prompt-text" *ngIf="slot.prompt">{{ slot.prompt }}</p>
+      <p class="prompt-text placeholder" *ngIf="!slot.prompt">
+        Your image prompt will appear here once you generate. You can upload an image now or after.
+      </p>
 
       <div class="prompt-slot-upload">
         <div class="image-thumb" *ngIf="slot.image">

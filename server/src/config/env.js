@@ -28,13 +28,12 @@ export const linkedin = {
   personUrn: process.env.LINKEDIN_PERSON_URN,
 };
 
-export const gemini = {
-  apiKey: process.env.GEMINI_API_KEY,
-  // gemini-2.5-flash, not a newer-sounding name - confirmed working via
-  // the official SDK in another of the user's projects. A speculative
-  // "gemini-3.8-flash" pick (from generic web search, never verified
-  // against a real working call) 503'd immediately.
-  model: 'gemini-2.5-flash',
+export const groq = {
+  apiKey: process.env.GROQ_API_KEY,
+  // Groq retires models on short notice, so keep this overridable from
+  // .env rather than hardcoded - a retired id fails with a 404/
+  // "decommissioned" error. Current ids: https://console.groq.com/docs/models
+  model: process.env.GROQ_MODEL || 'openai/gpt-oss-20b',
 };
 export const tavily = {
   apiKey: process.env.TAVILY_API_KEY,
