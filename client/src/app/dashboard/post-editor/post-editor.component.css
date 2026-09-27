@@ -1,0 +1,138 @@
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-color);
+}
+
+.editor label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.editor textarea {
+  font-weight: normal;
+  resize: vertical;
+}
+
+.failure {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-left: 3px solid #a31545;
+  border-radius: var(--radius-sm);
+  background-color: color-mix(in srgb, #a31545 8%, transparent);
+  font-size: 14px;
+}
+
+.images-title {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.image-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.image-slot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  width: 120px;
+}
+
+.image-slot img {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+}
+
+.image-actions {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.image-actions button,
+.file-button {
+  flex: 1;
+  padding: 2px 4px;
+  font-size: 12px;
+}
+
+.editor .file-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-weight: normal;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.file-button input,
+.image-add input {
+  display: none;
+}
+
+.editor .image-add {
+  width: 120px;
+  height: 120px;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: normal;
+  cursor: pointer;
+}
+
+.hint {
+  margin: var(--space-1) 0 0;
+  font-size: 13px;
+  opacity: 0.7;
+}
+
+fieldset.when {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  border: none;
+  margin: 0;
+  padding: 0;
+}
+
+fieldset.when legend {
+  width: 100%;
+  margin-bottom: var(--space-1);
+  padding: 0;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.editor label.radio {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-1);
+  font-weight: normal;
+  cursor: pointer;
+}
+
+.when input[type='datetime-local'] {
+  width: auto;
+}
+
+.editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}

@@ -28,16 +28,31 @@ export const linkedin = {
   personUrn: process.env.LINKEDIN_PERSON_URN,
 };
 
+// Every key-backed service takes a primary and an optional backup key.
+// Order matters: the key pool (utils/keyPool.js) always tries the first
+// one and only falls through to the next when a key is exhausted or down.
+const keyList = (...names) => names.map((name) => process.env[name]).filter(Boolean);
+
 export const groq = {
-  apiKey: process.env.GROQ_API_KEY,
+  apiKeys: keyList('GROQ_API_KEY', 'GROQ_API_KEY2'),
   // Groq retires models on short notice, so keep this overridable from
   // .env rather than hardcoded - a retired id fails with a 404/
   // "decommissioned" error. Current ids: https://console.groq.com/docs/models
   model: process.env.GROQ_MODEL || 'openai/gpt-oss-20b',
 };
+
 export const tavily = {
-  apiKey: process.env.TAVILY_API_KEY,
+  apiKeys: keyList('TAVILY_API_KEY', 'TAVILY_API_KEY2'),
 };
+
+// The daily research time is set from the Schedule page and stored in
+// MongoDB; only the timezone it is interpreted in lives here.
+export const researchTimezone = process.env.RESEARCH_TIMEZONE || 'Asia/Kolkata';
+
+// Shared secret for POST/GET /api/cron/tick - the hook an external pinger
+// (or Vercel Cron) calls once the backend no longer runs node-cron itself.
+// Left unset, that endpoint is disabled.
+export const cronSecret = process.env.CRON_SECRET;
 
 export const pixazo = {
   apiKey: process.env.PIXAZO_API_KEY,

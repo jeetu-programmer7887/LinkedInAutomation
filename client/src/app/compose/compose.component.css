@@ -160,6 +160,72 @@ fieldset.post-type legend {
   align-self: flex-start;
 }
 
+.idea-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-left: 3px solid var(--color-hover);
+  border-radius: var(--radius-sm);
+  background-color: color-mix(in srgb, var(--color-hover) 8%, transparent);
+}
+
+.idea-banner-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 280px;
+  font-size: 14px;
+}
+
+.idea-banner-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-hover);
+}
+
+.idea-banner-hint {
+  font-size: 13px;
+  opacity: 0.75;
+}
+
+fieldset.publish-mode {
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+fieldset.publish-mode legend {
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: var(--space-2);
+  padding: 0;
+}
+
+.publish-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* .compose-form label stacks its children; radios sit inline. */
+.compose-form label.radio {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-1);
+  font-weight: normal;
+  cursor: pointer;
+}
+
+.publish-options input[type='datetime-local'] {
+  width: auto;
+}
+
 .success {
   display: flex;
   flex-direction: column;

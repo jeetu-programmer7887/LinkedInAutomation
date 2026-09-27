@@ -1,8 +1,16 @@
-import { Component, OnDestroy } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { PostService } from '../core/services/post.service';
+import { IdeaService } from '../core/services/idea.service';
 import { Post } from '../core/models/post.model';
+import { Idea, IdeaRef, PostFormat } from '../core/models/idea.model';
 
-type PostType = 'text' | 'text_image' | 'text_image_prompts';
+type PostType = PostFormat;
+const POST_TYPES: PostType[] = ['text', 'text_image', 'text_image_prompts'];
+
+// Matches the server: a scheduled post needs at least one scheduler tick.
+const MIN_SCHEDULE_LEAD_MS = 2 * 60_000;
 
 interface SelectedImage {
   file: File;
@@ -25,8 +33,19 @@ const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
   templateUrl: './compose.component.html',
   styleUrls: ['./compose.component.css'],
 })
-export class ComposeComponent implements OnDestroy {
+export class ComposeComponent implements OnInit, OnDestroy {
   postType: PostType = 'text';
+
+  // Set when Compose was opened from an idea card on the Schedule page;
+  // the caption calls then ground the post in that idea's research.
+  ideaRef: IdeaRef | null = null;
+  idea: Idea | null = null;
+  ideaLoading = false;
+
+  publishMode: 'now' | 'schedule' = 'now';
+  /** datetime-local value, in the browser's local time. */
+  scheduledFor = '';
+
   description = '';
   caption = '';
   images: SelectedImage[] = [];
@@ -43,11 +62,67 @@ export class ComposeComponent implements OnDestroy {
   readonly maxImages = MAX_IMAGES;
   readonly imageCountOptions = Array.from({ length: MAX_IMAGES }, (_, i) => i + 1);
 
-  constructor(private readonly postService: PostService) {}
+  private querySub?: Subscription;
+
+  constructor(
+    private readonly postService: PostService,
+    private readonly ideaService: IdeaService,
+    private readonly route: ActivatedRoute,
+    private readonly router: Router
+  ) {}
+
+  /** Reads ?idea=<batchId>&index=<n>&type=<format> from the Schedule page's idea cards. */
+  ngOnInit(): void {
+    this.querySub = this.route.queryParamMap.subscribe((params) => {
+      const type = params.get('type') as PostType | null;
+      if (type && POST_TYPES.includes(type)) {
+        this.selectPostType(type);
+      }
+
+      const batchId = params.get('idea');
+      const index = Number(params.get('index'));
+      if (batchId && Number.isInteger(index)) {
+        this.loadIdea({ batchId, index });
+      }
+    });
+  }
 
   ngOnDestroy(): void {
+    this.querySub?.unsubscribe();
     this.releaseImages();
     this.releaseSlotImages();
+  }
+
+  private loadIdea(ref: IdeaRef): void {
+    this.ideaLoading = true;
+    this.error = null;
+    this.ideaService.getIdea(ref.batchId, ref.index).subscribe({
+      next: (idea) => {
+        this.ideaRef = ref;
+        this.idea = idea;
+        this.description = `${idea.topic}\n\n${idea.angle}`;
+        this.ideaLoading = false;
+      },
+      error: (err) => {
+        this.error = err.error?.error || 'Could not load that idea.';
+        this.ideaLoading = false;
+      },
+    });
+  }
+
+  /** Back to a blank, un-researched post. Drops the query params so a reload doesn't bring the idea back. */
+  clearIdea(): void {
+    this.ideaRef = null;
+    this.idea = null;
+    this.description = '';
+    this.router.navigate([], { relativeTo: this.route, queryParams: {} });
+  }
+
+  /** Earliest value the datetime-local picker allows, in local time. */
+  get minScheduleTime(): string {
+    const soon = new Date(Date.now() + MIN_SCHEDULE_LEAD_MS);
+    soon.setMinutes(soon.getMinutes() - soon.getTimezoneOffset());
+    return soon.toISOString().slice(0, 16);
   }
 
   selectPostType(type: PostType): void {
@@ -92,7 +167,7 @@ export class ComposeComponent implements OnDestroy {
     }
     this.error = null;
     this.generating = true;
-    this.postService.generateCaption(this.description.trim()).subscribe({
+    this.postService.generateCaption(this.description.trim(), this.ideaRef ?? undefined).subscribe({
       next: ({ caption }) => {
         this.caption = caption;
         this.generating = false;
@@ -113,24 +188,26 @@ export class ComposeComponent implements OnDestroy {
     this.error = null;
     this.generating = true;
 
-    this.postService.generateCaptionWithImagePrompts(this.description.trim(), this.imageCount).subscribe({
-      next: ({ caption, imagePrompts }) => {
-        this.caption = caption;
-        // Fill the slots that are already on screen, so any images the
-        // author uploaded before generating stay where they are.
-        this.syncSlots();
-        imagePrompts.forEach((prompt, i) => {
-          if (this.slots[i]) {
-            this.slots[i].prompt = prompt;
-          }
-        });
-        this.generating = false;
-      },
-      error: (err) => {
-        this.error = err.error?.error || 'Could not generate the caption and prompts. Try again.';
-        this.generating = false;
-      },
-    });
+    this.postService
+      .generateCaptionWithImagePrompts(this.description.trim(), this.imageCount, this.ideaRef ?? undefined)
+      .subscribe({
+        next: ({ caption, imagePrompts }) => {
+          this.caption = caption;
+          // Fill the slots that are already on screen, so any images the
+          // author uploaded before generating stay where they are.
+          this.syncSlots();
+          imagePrompts.forEach((prompt, i) => {
+            if (this.slots[i]) {
+              this.slots[i].prompt = prompt;
+            }
+          });
+          this.generating = false;
+        },
+        error: (err) => {
+          this.error = err.error?.error || 'Could not generate the caption and prompts. Try again.';
+          this.generating = false;
+        },
+      });
   }
 
   copyPrompt(index: number): void {
@@ -204,12 +281,34 @@ export class ComposeComponent implements OnDestroy {
       return;
     }
 
+    let scheduledAt: Date | null = null;
+    if (this.publishMode === 'schedule') {
+      scheduledAt = this.scheduledFor ? new Date(this.scheduledFor) : null;
+      if (!scheduledAt || Number.isNaN(scheduledAt.getTime())) {
+        this.error = 'Pick the date and time to publish.';
+        return;
+      }
+      if (scheduledAt.getTime() < Date.now() + MIN_SCHEDULE_LEAD_MS) {
+        this.error = 'Pick a time at least 2 minutes from now.';
+        return;
+      }
+    }
+
     this.error = null;
     this.publishing = true;
 
     const formData = new FormData();
     formData.append('description', this.description);
     formData.append('caption', this.caption);
+    // Recorded on the post for the Dashboard's breakdowns.
+    formData.append('postType', this.postType);
+    if (this.ideaRef) {
+      formData.append('ideaBatchId', this.ideaRef.batchId);
+      formData.append('ideaIndex', String(this.ideaRef.index));
+    }
+    if (scheduledAt) {
+      formData.append('scheduledFor', scheduledAt.toISOString());
+    }
 
     if (this.postType === 'text_image_prompts') {
       // Only slots with an image contribute, so the prompts stay aligned
@@ -245,8 +344,13 @@ export class ComposeComponent implements OnDestroy {
     this.images = [];
     this.slots = [];
     this.imageCount = 3;
+    this.publishMode = 'now';
+    this.scheduledFor = '';
     this.publishedPost = null;
     this.error = null;
+    if (this.idea) {
+      this.clearIdea();
+    }
   }
 
   private releaseImages(): void {

@@ -2,9 +2,11 @@ import app from './app.js';
 import { connectDb } from './config/db.js';
 import { port } from './config/env.js';
 import { startScheduler } from './jobs/scheduler.js';
+import { backfillPosts } from './jobs/backfillPosts.js';
 
 async function main() {
   await connectDb();
+  await backfillPosts();
   startScheduler();
 
   app.listen(port, () => {

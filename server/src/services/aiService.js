@@ -4,8 +4,41 @@
 // notice, so the model id lives in .env (GROQ_MODEL) rather than here.
 import Groq from 'groq-sdk';
 import { groq as groqConfig } from '../config/env.js';
+import { createKeyPool, cooldown, retryAfterMs } from '../utils/keyPool.js';
 
-const client = new Groq({ apiKey: groqConfig.apiKey });
+// Which Groq failures should move on to the backup key. Rate limits are
+// per key, so a 429 on the primary is exactly when the backup helps. A 413
+// is the prompt's own size, which the backup would reject just the same.
+function classifyGroqError(error) {
+  const status = error?.status;
+  const message = String(error?.message ?? '');
+
+  if (status === 401 || status === 403) {
+    return { failover: true, cooldownMs: cooldown.HOUR, reason: `auth ${status}` };
+  }
+  if (status === 429) {
+    const daily = /per day|\(TPD\)|\(RPD\)/i.test(message);
+    const wait = retryAfterMs(error.headers) ?? (daily ? cooldown.HOUR : cooldown.MINUTE);
+    return { failover: true, cooldownMs: wait, reason: daily ? 'daily limit reached' : 'rate limited' };
+  }
+  // No status = never reached Groq (network/timeout). 498 = capacity.
+  if (status === undefined || status === 498 || status >= 500) {
+    return { failover: true, cooldownMs: cooldown.MINUTE, reason: status ? `server ${status}` : 'connection failed' };
+  }
+  return { failover: false };
+}
+
+const groqPool = createKeyPool('groq', groqConfig.apiKeys, classifyGroqError);
+
+// With a backup key, a failed call should move to the backup right away
+// rather than first sitting through the SDK's own retries on the same key.
+const clients = new Map();
+function clientFor(apiKey) {
+  if (!clients.has(apiKey)) {
+    clients.set(apiKey, new Groq({ apiKey, maxRetries: groqPool.size > 1 ? 0 : 2 }));
+  }
+  return clients.get(apiKey);
+}
 
 // Groq's raw SDK errors are terse. Annotate the ones we actually hit so a
 // retired model or a bad key reads as itself instead of a generic 500.
@@ -20,7 +53,7 @@ function describeGroqError(error) {
     return `Groq model "${groqConfig.model}" is unavailable or retired. Pick a current id from https://console.groq.com/docs/models and set GROQ_MODEL in .env.`;
   }
   if (status === 429) {
-    return 'Groq rate limit hit - the free tier caps requests and tokens per minute and per day.';
+    return 'Groq rate limit hit on every configured key - the free tier caps requests and tokens per minute and per day.';
   }
   if (status === 413) {
     return "Prompt too large for this model's free-tier token-per-minute limit.";
@@ -28,9 +61,9 @@ function describeGroqError(error) {
   return null;
 }
 
-async function createCompletion(params) {
+export async function createCompletion(params) {
   try {
-    return await client.chat.completions.create(params);
+    return await groqPool.run((apiKey) => clientFor(apiKey).chat.completions.create(params));
   } catch (error) {
     const hint = describeGroqError(error);
     if (hint) {
@@ -40,21 +73,82 @@ async function createCompletion(params) {
   }
 }
 
+const REASONING_MODEL = /gpt-oss|qwen3|deepseek-r1/i;
+
+/**
+ * One JSON-mode completion, parsed. Shared by every structured call so
+ * they all get the same reasoning cap and the same readable failures.
+ */
+export async function completeJson(prompt, { temperature = 0.7, maxTokens = 4096 } = {}) {
+  const params = {
+    model: groqConfig.model,
+    messages: [
+      { role: 'system', content: 'Respond with a single JSON object and nothing else.' },
+      { role: 'user', content: prompt },
+    ],
+    temperature,
+    response_format: { type: 'json_object' },
+    max_completion_tokens: maxTokens,
+  };
+  // Reasoning models bill their thinking as completion tokens, spent before
+  // any JSON is written. Cap it or they run out mid-document.
+  if (REASONING_MODEL.test(groqConfig.model)) {
+    params.reasoning_effort = 'low';
+  }
+
+  const completion = await createCompletion(params);
+  const choice = completion.choices[0];
+  const raw = choice?.message?.content;
+  if (!raw) {
+    throw new Error(
+      `Groq returned an empty response (finish_reason: ${choice?.finish_reason ?? 'unknown'}). ` +
+        'A "length" finish_reason means the token cap was too low for this prompt.'
+    );
+  }
+  try {
+    return JSON.parse(raw.replace(/```json|```/g, '').trim());
+  } catch (err) {
+    throw new Error(`Groq returned malformed JSON: ${err.message}`);
+  }
+}
+
+// Appended last (where the model weighs instructions most) whenever a
+// caption is written from a trending idea. The general prompt's opening
+// patterns ("I thought X would be the hard part...") otherwise pull the
+// model into inventing a personal anecdote around the news.
+const RESEARCH_RULES = `
+════════════════════════════════════
+RESEARCH-BASED POST - THESE RULES OVERRIDE EVERYTHING ABOVE
+════════════════════════════════════
+
+This post is built on outside research, not on the author's own experience.
+
+1. The events, data and findings in the research happened to other people. Present them as news or observation ("New survey data shows...", "One thing this makes obvious...") - never as something the author did, used, saw, tested, or lived through.
+2. The author's facts may be mentioned only as they are written. Never add what happened while building those projects - no bugs, staging issues, surprises, lessons, or numbers. If no fact clearly relates to the topic, leave the author's projects out entirely.
+3. Every number and named claim must come from the research, unchanged in meaning.
+4. Do not open with "I thought".
+
+Before answering, check every sentence of the caption against these four rules and rewrite any sentence that breaks one.
+
+`;
+
 /**
  * Turns a short, informal description of what the post should be about
  * into a full, LinkedIn-ready caption with hashtags. This is the only
  * automated step in Feature 1 - image selection and the send action are
  * fully manual.
  */
-export async function generateCaption(description) {
+export async function generateCaption(description, researchContext = '') {
   const prompt = `Write a professional, engaging LinkedIn post caption based on this description from the author:
 "${description}"
+${researchContext}
 
 Guidelines:
 - First person, natural and confident tone - no corporate buzzword filler, not salesy
 - Short paragraphs with line breaks, the way real LinkedIn posts read
 - End with 5-8 hashtags chosen specifically to maximize reach and impressions: mix a couple of broad, high-traffic industry hashtags with several more specific, niche ones directly tied to the topic - avoid generic filler tags that don't relate to the content
-- Output ONLY the caption text itself - no preamble, no markdown formatting, no surrounding quotes`;
+- Output ONLY the caption text itself - no preamble, no markdown formatting, no surrounding quotes
+${researchContext ? RESEARCH_RULES : ''}`;
 
   const completion = await createCompletion({
     model: groqConfig.model,
@@ -78,7 +172,7 @@ Guidelines:
 // topic, and image prompts that collapsed into generic "glowing network"
 // stock imagery. This version specifies structure positively, names the
 // exact failure modes, and ends with a self-check.
-function buildCaptionAndImagePromptsInstructions(description, imageCount) {
+function buildCaptionAndImagePromptsInstructions(description, imageCount, researchContext = '') {
   const images = imageCount === 1 ? 'image' : 'images';
   const prompts = imageCount === 1 ? 'prompt' : 'prompts';
 
@@ -87,7 +181,7 @@ function buildCaptionAndImagePromptsInstructions(description, imageCount) {
 The author's description is:
 
 "${description}"
-
+${researchContext}
 The post will be published with exactly ${imageCount} ${images}.
 
 Your job is to create two content deliverables:
@@ -383,7 +477,7 @@ BAD:
 "Futuristic visualization of interconnected microservices with glowing blue nodes."
 
 BETTER:
-"Photorealistic close-up of a software engineer reviewing a service-dependency diagram on a large monitor in a modern engineering workspace, with a laptop showing code beside handwritten architecture notes, late-afternoon window light, realistic office details, 35mm documentary photography, natural neutral colors, 1200x627 landscape."
+"Photorealistic close-up of a software engineer reviewing a service-dependency diagram on a large monitor in a modern engineering workspace, with a laptop showing code beside handwritten architecture notes, late-afternoon window light, realistic office details, 35mm documentary photography, natural neutral colors, 1080x1080 square."
 
 The second prompt depicts a recognizable working situation rather than generic technology symbolism.
 
@@ -414,10 +508,22 @@ Every image must earn its place.
 If there is only one image, make it the strongest visual representation of the central subject.
 
 ════════════════════════════════════
+VISUAL STYLE MIX
+════════════════════════════════════
+
+The author's best-performing posts use two visual styles. Choose one per image:
+
+1. NOTEBOOK INFOGRAPHIC - for concepts, comparisons, code behaviour, and anything the reader should learn from the image itself. A hand-drawn explainer sheet on off-white notebook paper: dark-blue and black ink, handwriting-style headings, simple boxes, arrows and panels, a green "correct" side and a red "wrong" side when a comparison fits, small doodle icons, generous margins. Spell out every word that should appear on the image inside quotes in the prompt, and keep it short: a title of at most 8 words and labels of 1 to 4 words, about 25 words in total at most.
+
+2. REALISTIC PHOTO - for human moments, workplaces, and what the subject looks like in real life. No visible text at all.
+
+With several images, mix the two styles unless the topic clearly suits only one. With a single image, use the notebook infographic for concept or explainer topics and a realistic photo otherwise.
+
+════════════════════════════════════
 REALISM DEFAULT
 ════════════════════════════════════
 
-Default to photographic realism.
+Realistic photography is one of the two house styles (see VISUAL STYLE MIX above).
 
 For photographic prompts, explicitly describe:
 
@@ -431,7 +537,7 @@ For photographic prompts, explicitly describe:
 - lighting
 - mood
 - realistic color palette
-- 1200x627 landscape framing
+- 1080x1080 square framing
 
 Prefer authentic documentary/editorial photography over glossy stock photography.
 
@@ -498,7 +604,7 @@ Also avoid generic visual metaphors such as:
 
 Only use such imagery if the author's subject specifically requires it.
 
-Do not use logos, brand marks, watermarks, fake UI text, lettering, words, captions, numbers, labels, or readable typography inside generated images.
+Do not use logos, brand marks, watermarks, or fake UI text in any image. Realistic photos must contain no words, numbers, labels, or readable typography at all; notebook infographics may contain only the short text quoted in their prompt.
 
 ════════════════════════════════════
 IMAGE RELEVANCE TEST
@@ -524,11 +630,11 @@ IMAGE TECHNICAL REQUIREMENTS
 
 Every image prompt must specify:
 
-1200x627 landscape framing.
+1080x1080 square framing.
 
-Do not request text, lettering, logos, numbers, captions, watermarks, or readable interface text inside the image.
+Realistic photo prompts must not request any visible text. Notebook infographic prompts must quote every word that should appear, and nothing else. No logos or watermarks in any image.
 
-The image prompt itself may contain technical terms needed to describe the scene, but the generated image must not contain those terms as visible text.
+The image prompt itself may contain technical terms needed to describe the scene, but the generated image must not contain those terms as visible text unless they are among an infographic's quoted labels.
 
 ════════════════════════════════════
 FINAL SELF-CHECK
@@ -553,14 +659,14 @@ IMAGES:
 12. Are there exactly ${imageCount} image ${prompts}?
 13. Does every image depict a concrete, subject-specific scene or visual?
 14. Are the images meaningfully different from one another?
-15. Is photographic realism used unless a diagram or illustration is genuinely more appropriate?
+15. Does each image use the style that fits it (notebook infographic for concepts, realistic photo for human moments), mixed across images where that fits?
 16. Have I avoided generic AI-tech imagery?
 17. Could any image prompt be reused for an unrelated topic? If yes, rewrite it.
-18. Does every prompt specify 1200x627 landscape framing?
-19. Does every prompt prohibit visible text, logos, numbers, and watermarks?
+18. Does every prompt specify 1080x1080 square framing?
+19. Do photo prompts forbid all visible text, do infographic prompts quote every word that may appear, and are logos and watermarks excluded everywhere?
 20. Can every image prompt be pasted directly into an image generator without additional context?
 
-════════════════════════════════════
+${researchContext ? RESEARCH_RULES : ''}════════════════════════════════════
 OUTPUT FORMAT
 ════════════════════════════════════
 
@@ -584,8 +690,8 @@ The JSON object must have exactly these two keys:
  * with them. The prompts are not rendered here - the author takes them to
  * whichever image tool they prefer and uploads the results back.
  */
-export async function generateCaptionWithImagePrompts(description, imageCount) {
-  const prompt = buildCaptionAndImagePromptsInstructions(description, imageCount);
+export async function generateCaptionWithImagePrompts(description, imageCount, researchContext = '') {
+  const prompt = buildCaptionAndImagePromptsInstructions(description, imageCount, researchContext);
 
   const completion = await createCompletion({
     model: groqConfig.model,

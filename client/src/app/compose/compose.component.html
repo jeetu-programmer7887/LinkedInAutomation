@@ -1,6 +1,13 @@
 <h1>Compose</h1>
 
-<div class="card success" *ngIf="publishedPost">
+<div class="card success" *ngIf="publishedPost?.status === 'scheduled'">
+  <h2>Scheduled!</h2>
+  <p>Your post will go out on {{ publishedPost?.scheduledFor | date: 'EEE d MMM, h:mm a' }}.</p>
+  <a class="primary-link" routerLink="/schedule">View scheduled posts</a>
+  <button type="button" (click)="startNewPost()">Create another post</button>
+</div>
+
+<div class="card success" *ngIf="publishedPost && publishedPost.status !== 'scheduled'">
   <h2>Posted!</h2>
   <p>Your post is live on LinkedIn.</p>
   <a class="primary-link" [href]="publishedPost.linkedInPostUrl" target="_blank" rel="noopener">View on LinkedIn</a>
@@ -9,6 +16,20 @@
 
 <form class="card compose-form" *ngIf="!publishedPost" (ngSubmit)="send()">
   <p *ngIf="error" class="error">{{ error }}</p>
+
+  <p class="placeholder" *ngIf="ideaLoading">Loading idea…</p>
+
+  <div class="idea-banner" *ngIf="idea">
+    <div class="idea-banner-text">
+      <span class="idea-banner-label">Writing from a {{ idea.kind === 'trending' ? 'trending' : 'evergreen' }} idea</span>
+      <strong>{{ idea.topic }}</strong>
+      <span class="idea-banner-hint">
+        The caption will be built on this idea's research ({{ idea.keyPoints.length }} key facts from
+        {{ idea.sources.length }} source{{ idea.sources.length === 1 ? '' : 's' }}).
+      </span>
+    </div>
+    <button type="button" (click)="clearIdea()">Clear idea</button>
+  </div>
 
   <fieldset class="post-type">
     <legend>Post type</legend>
@@ -43,7 +64,7 @@
   <label>
     <span>What's this post about?</span>
     <textarea
-      rows="2"
+      [rows]="idea ? 5 : 2"
       [(ngModel)]="description"
       name="description"
       placeholder="e.g. Wrapping up a project migrating our backend to microservices"
@@ -131,7 +152,30 @@
     </div>
   </div>
 
+  <fieldset class="publish-mode">
+    <legend>When to publish</legend>
+    <div class="publish-options">
+      <label class="radio">
+        <input type="radio" name="publishMode" value="now" [(ngModel)]="publishMode" />
+        Post now
+      </label>
+      <label class="radio">
+        <input type="radio" name="publishMode" value="schedule" [(ngModel)]="publishMode" />
+        Schedule
+      </label>
+      <input
+        *ngIf="publishMode === 'schedule'"
+        type="datetime-local"
+        name="scheduledFor"
+        aria-label="Publish date and time"
+        [(ngModel)]="scheduledFor"
+        [min]="minScheduleTime"
+      />
+    </div>
+  </fieldset>
+
   <button type="submit" class="primary send-button" [disabled]="publishing">
-    {{ publishing ? 'Posting…' : 'Send' }}
+    <ng-container *ngIf="publishMode === 'now'">{{ publishing ? 'Posting…' : 'Post now' }}</ng-container>
+    <ng-container *ngIf="publishMode === 'schedule'">{{ publishing ? 'Scheduling…' : 'Schedule post' }}</ng-container>
   </button>
 </form>
