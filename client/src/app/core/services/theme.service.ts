@@ -7,12 +7,16 @@ import { API_BASE_URL } from '../config/api-config';
 
 const STORAGE_KEY = 'la_theme';
 
-// Applies the user's chosen Background/Text/Hover colors as CSS custom
-// properties on <html>, so every component stylesheet that references
+// Applies the chosen Background/Text/Hover colors as CSS custom properties
+// on <html>, so every component stylesheet that references
 // var(--color-bg/--color-text/--color-hover) updates instantly, app-wide,
-// with no reload. localStorage is only a flash-of-default-theme guard for
-// the moment before the server value loads - the server theme (User.theme)
-// is always the source of truth once the user is logged in.
+// with no reload.
+//
+// Two copies of the theme: MongoDB (GET/PUT /api/settings/theme) is the
+// source of truth, shared by every browser; localStorage is this browser's
+// cache, applied the instant the app boots so a refresh never flashes the
+// default colors while the server copy loads. AppComponent creates this
+// service at startup and calls loadFromServer().
 @Injectable({
   providedIn: 'root',
 })
@@ -30,16 +34,35 @@ export class ThemeService {
     return this.currentThemeSubject.value;
   }
 
-  /** Applies immediately and persists to the logged-in user's profile. */
+  /** Applies immediately, caches in this browser, and saves to the server. */
   setTheme(theme: Theme): void {
-    this.currentThemeSubject.next(theme);
-    this.applyToDom(theme);
-    this.cacheTheme(theme);
+    this.apply(theme);
 
-    this.http.patch(`${API_BASE_URL}/users/me/theme`, theme).subscribe({
+    this.http.put<Theme>(`${API_BASE_URL}/settings/theme`, theme).subscribe({
       error: () => {
-        // Non-fatal: the theme still applies locally even if the save
-        // fails (e.g. offline, or not logged in yet).
+        // Non-fatal: the theme still applies and stays cached in this
+        // browser even if the save fails (e.g. the server is down).
+      },
+    });
+  }
+
+  /**
+   * Syncs with the saved theme once at startup. The server copy wins, so a
+   * theme set in one browser follows to the next. If the server has never
+   * saved one, this browser's cached choice (if any) is uploaded rather than
+   * replaced by the default. If the server is unreachable, the cache stays.
+   */
+  loadFromServer(): void {
+    this.http.get<{ theme: Theme | null }>(`${API_BASE_URL}/settings/theme`).subscribe({
+      next: ({ theme }) => {
+        if (theme) {
+          this.hydrateFromServer(theme);
+        } else if (this.hasCachedTheme()) {
+          this.setTheme(this.currentTheme);
+        }
+      },
+      error: () => {
+        // Keep the cached theme.
       },
     });
   }
@@ -54,10 +77,14 @@ export class ThemeService {
   /** Called once after login with the theme stored on the user's profile. */
   hydrateFromServer(theme: Theme | null | undefined): void {
     if (theme?.background && theme?.text && theme?.hover) {
-      this.currentThemeSubject.next(theme);
-      this.applyToDom(theme);
-      this.cacheTheme(theme);
+      this.apply(theme);
     }
+  }
+
+  private apply(theme: Theme): void {
+    this.currentThemeSubject.next(theme);
+    this.applyToDom(theme);
+    this.cacheTheme(theme);
   }
 
   private applyToDom(theme: Theme): void {
@@ -72,6 +99,14 @@ export class ThemeService {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(theme));
     } catch {
       // Private browsing / storage disabled - fine, just skip the cache.
+    }
+  }
+
+  private hasCachedTheme(): boolean {
+    try {
+      return localStorage.getItem(STORAGE_KEY) !== null;
+    } catch {
+      return false;
     }
   }
 

@@ -1,2 +1,156 @@
 <h1>Dashboard</h1>
-<p class="placeholder">Manage your posts, track impressions and interactions, and jump straight to LinkedIn. (Coming next: Feature 3 build-out.)</p>
+
+<p class="error" *ngIf="error">{{ error }}</p>
+<p class="placeholder" *ngIf="loading && !summary">Loading…</p>
+
+<ng-container *ngIf="summary">
+  <section class="tiles" aria-label="Post totals">
+    <div class="card tile">
+      <span class="tile-value">{{ summary.total }}</span>
+      <span class="tile-label">Posts created</span>
+      <span class="tile-sub">{{ summary.last7Days }} this week · {{ summary.last30Days }} in 30 days</span>
+    </div>
+    <div class="card tile">
+      <span class="tile-value">{{ count('published') }}</span>
+      <span class="tile-label">Published</span>
+    </div>
+    <div class="card tile">
+      <span class="tile-value">{{ count('scheduled') + count('publishing') }}</span>
+      <span class="tile-label">Scheduled</span>
+    </div>
+    <div class="card tile" [class.alert]="count('failed') > 0">
+      <span class="tile-value">{{ count('failed') }}</span>
+      <span class="tile-label">Failed</span>
+    </div>
+    <div class="card tile">
+      <span class="tile-value">{{ count('cancelled') }}</span>
+      <span class="tile-label">Cancelled</span>
+    </div>
+  </section>
+
+  <section class="breakdowns">
+    <div class="card">
+      <h2>By post type</h2>
+      <ul class="bars">
+        <li *ngFor="let row of typeBreakdown">
+          <div class="bar-label">
+            <span>{{ row.label }}</span>
+            <span>{{ row.count }}</span>
+          </div>
+          <div class="bar-track"><div class="bar-fill" [style.width.%]="row.share"></div></div>
+        </li>
+      </ul>
+    </div>
+    <div class="card">
+      <h2>By source</h2>
+      <ul class="bars">
+        <li *ngFor="let row of sourceBreakdown">
+          <div class="bar-label">
+            <span>{{ row.label }}</span>
+            <span>{{ row.count }}</span>
+          </div>
+          <div class="bar-track"><div class="bar-fill" [style.width.%]="row.share"></div></div>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <div class="main-grid">
+    <section class="posts">
+      <div class="posts-header">
+        <h2>Posts</h2>
+        <div class="filters">
+          <div class="status-filters" role="group" aria-label="Filter by status">
+            <button
+              type="button"
+              *ngFor="let f of statusFilters"
+              [class.active]="statusFilter === f.value"
+              (click)="setStatusFilter(f.value)"
+            >
+              {{ f.label }}
+            </button>
+          </div>
+          <select [(ngModel)]="typeFilter" (ngModelChange)="reload()" aria-label="Filter by post type">
+            <option value="">All types</option>
+            <option *ngFor="let t of typeOptions" [value]="t.value">{{ t.label }}</option>
+          </select>
+        </div>
+      </div>
+
+      <p class="placeholder" *ngIf="!posts.length && !loading">No posts match these filters.</p>
+
+      <ul class="post-list">
+        <li class="card post-row" *ngFor="let post of posts" [class.is-failed]="post.status === 'failed'">
+          <div class="post-main">
+            <div class="post-meta">
+              <span class="status-pill" [attr.data-status]="post.status">{{ statusLabel(post) }}</span>
+              <span class="type-tag">{{ typeLabel(post) }}</span>
+              <span class="type-tag" *ngIf="post.images.length">
+                {{ post.images.length }} image{{ post.images.length === 1 ? '' : 's' }}
+              </span>
+              <span class="type-tag idea-tag" *ngIf="post.source === 'idea'" [title]="post.ideaTopic || ''">From idea</span>
+            </div>
+
+            <p class="post-text">{{ excerpt(post.content.text) }}</p>
+
+            <p class="post-detail" [ngSwitch]="post.status">
+              <ng-container *ngSwitchCase="'published'">Published {{ post.publishedAt | date: 'd MMM y, h:mm a' }}</ng-container>
+              <ng-container *ngSwitchCase="'scheduled'">Goes out {{ post.scheduledFor | date: 'EEE d MMM, h:mm a' }}</ng-container>
+              <ng-container *ngSwitchCase="'publishing'">Publishing now…</ng-container>
+              <ng-container *ngSwitchCase="'failed'">
+                Failed {{ post.failedAt | date: 'd MMM, h:mm a' }}<span *ngIf="post.failureReason"> - {{ post.failureReason }}</span>
+              </ng-container>
+              <ng-container *ngSwitchCase="'cancelled'">Cancelled {{ post.cancelledAt | date: 'd MMM, h:mm a' }}</ng-container>
+              <span class="created"> · created {{ post.createdAt | date: 'd MMM y' }}</span>
+            </p>
+          </div>
+
+          <div class="post-actions">
+            <a
+              *ngIf="post.linkedInPostUrl"
+              class="action-link"
+              [href]="post.linkedInPostUrl"
+              target="_blank"
+              rel="noopener"
+            >
+              View on LinkedIn
+            </a>
+            <button type="button" *ngIf="canEdit(post)" [class.primary]="post.status === 'failed'" (click)="toggleEditor(post)">
+              {{ editingId === post._id ? 'Close' : post.status === 'failed' ? 'Fix & reschedule' : 'Edit' }}
+            </button>
+            <button
+              type="button"
+              *ngIf="post.status === 'scheduled'"
+              (click)="cancelPost(post)"
+              [disabled]="cancellingId === post._id"
+            >
+              {{ cancellingId === post._id ? 'Cancelling…' : 'Cancel' }}
+            </button>
+          </div>
+
+          <app-post-editor
+            class="post-editor"
+            *ngIf="editingId === post._id"
+            [post]="post"
+            (saved)="onSaved()"
+            (closed)="editingId = null"
+          ></app-post-editor>
+        </li>
+      </ul>
+    </section>
+
+    <aside class="activity">
+      <h2>Recent activity</h2>
+      <p class="placeholder" *ngIf="!summary.activity.length">Nothing yet - activity appears as you post, schedule and research.</p>
+      <ol class="activity-list">
+        <li *ngFor="let item of summary.activity" [attr.data-type]="item.type">
+          <span class="activity-dot" aria-hidden="true"></span>
+          <div>
+            <p>{{ item.message }}</p>
+            <time [attr.datetime]="item.createdAt">{{ item.createdAt | date: 'd MMM, h:mm a' }}</time>
+          </div>
+        </li>
+      </ol>
+    </aside>
+  </div>
+</ng-container>

@@ -36,10 +36,23 @@ const postSchema = new mongoose.Schema(
       // (jobs/scheduler.js) flips a due "scheduled" post to "publishing"
       // atomically before actually calling the LinkedIn API, so a second
       // tick (or a future second instance) can't double-publish it.
-      enum: ['draft', 'generating', 'scheduled', 'publishing', 'published', 'failed'],
+      // "cancelled" posts are kept (not deleted) so the Dashboard's record
+      // of everything created stays complete.
+      enum: ['draft', 'generating', 'scheduled', 'publishing', 'published', 'failed', 'cancelled'],
       default: 'draft',
       index: true,
     },
+
+    // What the author chose in Compose. Backfilled for older posts from
+    // their images (jobs/backfillPosts.js).
+    postType: { type: String, enum: ['text', 'text_image', 'text_image_prompts'], index: true },
+    // "idea" when written from a trending-idea card on the Schedule page.
+    source: { type: String, enum: ['manual', 'idea'], default: 'manual' },
+    ideaTopic: { type: String },
+    // How the author asked for it to go out; status says what happened.
+    publishMode: { type: String, enum: ['now', 'scheduled'] },
+    failedAt: { type: Date },
+    cancelledAt: { type: Date },
     // Fine-grained step within status "generating" - the Compose screen
     // polls GET /api/posts/:id every couple seconds and shows this
     // (researching -> writing -> generating_images -> publishing -> done)

@@ -1,116 +1,199 @@
-.schedule-form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  max-width: 640px;
+section {
+  margin-bottom: var(--space-5, 32px);
 }
 
-.schedule-form label {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  font-size: 14px;
-  font-weight: 500;
+h2 {
+  margin: 0 0 var(--space-2);
+  font-size: 18px;
 }
 
-.schedule-form textarea {
-  font-weight: normal;
-  resize: vertical;
-}
-
-.tab-hint {
+.hint,
+.meta {
   margin: 0;
   font-size: 14px;
   opacity: 0.75;
-  max-width: 60ch;
 }
 
-.image-count select {
+/* Daily research time */
+.research-time {
+  max-width: 640px;
+}
+
+.time-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.time-row input {
   width: auto;
-  min-width: 80px;
-  align-self: flex-start;
 }
 
-.prompt-slots {
+.timezone {
+  font-size: 13px;
+  opacity: 0.7;
+}
+
+/* Ideas */
+.section-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.idea-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--space-3);
+  transition: opacity 0.2s;
+}
+
+/* The old ideas stay readable while fresh ones are researched. */
+.idea-grid.stale {
+  opacity: 0.5;
+}
+
+.idea-card {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-2);
 }
 
-.prompt-slots-title {
+.idea-card h3 {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.35;
+}
+
+.badge {
+  align-self: flex-start;
+  padding: 2px var(--space-2);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background-color: color-mix(in srgb, var(--color-hover) 15%, transparent);
+  color: var(--color-hover);
+}
+
+.badge.evergreen {
+  background-color: color-mix(in srgb, var(--color-text) 10%, transparent);
+  color: var(--color-text);
+}
+
+dl {
+  margin: 0;
   font-size: 14px;
+  line-height: 1.5;
+}
+
+dt {
+  margin-top: var(--space-2);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.65;
+}
+
+dd {
+  margin: 2px 0 0;
+}
+
+.key-points {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.key-points li + li {
+  margin-top: 4px;
+}
+
+.sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+}
+
+.write-as {
+  margin-top: auto;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: 13px;
   font-weight: 500;
 }
 
-.prompt-slot {
+.format-buttons {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: var(--space-2);
+}
+
+.format-button {
+  padding: var(--space-1) var(--space-2);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
-  padding: var(--space-3);
-}
-
-.prompt-text {
-  margin: 0;
-  font-size: 14px;
-  line-height: 1.6;
-  white-space: pre-wrap;
-}
-
-/* Preview uploads wide rather than in the 100px square thumbnails the
-   Compose tab uses. */
-.image-preview {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-2);
-  max-width: 320px;
-}
-
-.image-preview img {
-  width: 100%;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-color);
-}
-
-.image-add {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-2) var(--space-3);
-  border: 1px dashed var(--border-color);
-  border-radius: var(--radius-sm);
+  color: var(--color-text);
   font-size: 13px;
-  font-weight: normal;
-  cursor: pointer;
-  align-self: flex-start;
 }
 
-.image-add input {
-  display: none;
+.format-button:hover {
+  text-decoration: none;
+  border-color: var(--color-hover);
+  color: var(--color-hover);
 }
 
-.send-button {
-  align-self: flex-start;
-}
-
-.success {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  align-items: flex-start;
-}
-
-.primary-link {
-  display: inline-block;
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-sm);
+/* The format the research suggested gets the filled style. */
+.format-button.suggested {
   background-color: var(--color-hover);
+  border-color: var(--color-hover);
   color: var(--color-bg);
 }
 
-.primary-link:hover {
-  text-decoration: none;
+.format-button.suggested:hover {
+  color: var(--color-bg);
   filter: brightness(1.1);
+}
+
+/* Scheduled posts */
+.scheduled-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-width: 800px;
+}
+
+.scheduled-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.scheduled-item p {
+  flex: 1 1 280px;
+  margin: 0;
+  font-size: 14px;
+}
+
+.scheduled-when {
+  display: flex;
+  flex-direction: column;
+  min-width: 150px;
+  font-size: 14px;
+}
+
+.scheduled-when span {
+  font-size: 12px;
+  opacity: 0.7;
 }

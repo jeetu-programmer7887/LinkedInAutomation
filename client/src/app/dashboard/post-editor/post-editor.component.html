@@ -1,0 +1,62 @@
+<form class="editor" (ngSubmit)="save()">
+  <p class="failure" *ngIf="isFailed && post.failureReason">
+    <strong>Why it failed:</strong> {{ post.failureReason }}
+  </p>
+
+  <label>
+    <span>Caption</span>
+    <textarea rows="7" name="caption" [(ngModel)]="caption"></textarea>
+  </label>
+
+  <div class="images">
+    <span class="images-title">Images ({{ slots.length }}/{{ maxImages }})</span>
+    <div class="image-list">
+      <div class="image-slot" *ngFor="let slot of slots; let i = index">
+        <img [src]="imageUrl(slot)" [alt]="'Image ' + (i + 1)" />
+        <div class="image-actions">
+          <label class="file-button">
+            <input type="file" accept="image/jpeg,image/png,image/webp" (change)="replaceImage($event, i)" />
+            Re-upload
+          </label>
+          <button type="button" (click)="removeImage(i)">Remove</button>
+        </div>
+      </div>
+
+      <label class="image-add" *ngIf="slots.length < maxImages">
+        <input type="file" accept="image/jpeg,image/png,image/webp" (change)="addImage($event)" />
+        + Add image
+      </label>
+    </div>
+    <p class="hint" *ngIf="!slots.length">No images - this will go out as a text post.</p>
+  </div>
+
+  <fieldset class="when">
+    <legend>Then</legend>
+    <label class="radio">
+      <input type="radio" name="mode" value="schedule" [(ngModel)]="mode" />
+      {{ isFailed ? 'Reschedule' : 'Keep scheduled' }}
+    </label>
+    <input
+      *ngIf="mode === 'schedule'"
+      type="datetime-local"
+      name="scheduledFor"
+      aria-label="Publish date and time"
+      [(ngModel)]="scheduledFor"
+      [min]="minScheduleTime"
+    />
+    <label class="radio">
+      <input type="radio" name="mode" value="now" [(ngModel)]="mode" />
+      Post now
+    </label>
+  </fieldset>
+
+  <p class="error" *ngIf="error">{{ error }}</p>
+
+  <div class="editor-actions">
+    <button type="submit" class="primary" [disabled]="saving">
+      <ng-container *ngIf="mode === 'schedule'">{{ saving ? 'Saving…' : isFailed ? 'Save & reschedule' : 'Save changes' }}</ng-container>
+      <ng-container *ngIf="mode === 'now'">{{ saving ? 'Posting…' : 'Save & post now' }}</ng-container>
+    </button>
+    <button type="button" (click)="closed.emit()" [disabled]="saving">Close</button>
+  </div>
+</form>

@@ -1,4 +1,5 @@
 import { Component } from '@angular/core';
+import { ThemeService } from './core/services/theme.service';
 
 @Component({
   selector: 'app-root',
@@ -7,4 +8,10 @@ import { Component } from '@angular/core';
 })
 export class AppComponent {
   title = 'client';
+
+  // Injected here so the theme is applied on every page from the first
+  // render (from the browser cache), then synced with the saved copy.
+  constructor(themeService: ThemeService) {
+    themeService.loadFromServer();
+  }
 }
