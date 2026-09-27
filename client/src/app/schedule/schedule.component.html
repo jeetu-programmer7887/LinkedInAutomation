@@ -1,2 +1,77 @@
 <h1>Schedule</h1>
-<p class="placeholder">Pick a time and category and the app will pre-generate the post, then publish exactly on time. (Coming next: Feature 2 build-out.)</p>
+
+<div class="card success" *ngIf="publishedPost">
+  <h2>Posted!</h2>
+  <p>Your post is live on LinkedIn.</p>
+  <a class="primary-link" [href]="publishedPost.linkedInPostUrl" target="_blank" rel="noopener">View on LinkedIn</a>
+  <button type="button" (click)="startNewPost()">Create another post</button>
+</div>
+
+<form class="card schedule-form" *ngIf="!publishedPost" (ngSubmit)="send()">
+  <p *ngIf="error" class="error">{{ error }}</p>
+
+  <p class="tab-hint">
+    Describe the post and pick how many images you want. You'll get the caption plus one image prompt per
+    image — render each prompt in your own image tool, then upload the result into its slot.
+  </p>
+
+  <label>
+    <span>What's this post about?</span>
+    <textarea
+      rows="2"
+      [(ngModel)]="description"
+      name="description"
+      placeholder="e.g. Wrapping up a project migrating our backend to microservices"
+    ></textarea>
+  </label>
+
+  <label class="image-count">
+    <span>How many images?</span>
+    <select [(ngModel)]="imageCount" name="imageCount" (ngModelChange)="syncSlots()">
+      <option *ngFor="let n of imageCountOptions" [ngValue]="n">{{ n }}</option>
+    </select>
+  </label>
+
+  <button type="button" (click)="generateCaptionAndPrompts()" [disabled]="generating">
+    {{ generating ? 'Generating…' : 'Generate caption + ' + imageCount + ' image prompt' + (imageCount === 1 ? '' : 's') }}
+  </button>
+
+  <label>
+    <span>Caption</span>
+    <textarea
+      rows="8"
+      [(ngModel)]="caption"
+      name="caption"
+      placeholder="Your generated caption will appear here - feel free to edit it."
+    ></textarea>
+  </label>
+
+  <div class="prompt-slots">
+    <span class="prompt-slots-title">Images ({{ filledSlotCount }}/{{ slots.length }} ready)</span>
+
+    <div class="prompt-slot" *ngFor="let slot of slots; let i = index">
+      <strong>Image {{ i + 1 }}</strong>
+
+      <p class="prompt-text" *ngIf="slot.prompt">{{ slot.prompt }}</p>
+      <p class="prompt-text placeholder" *ngIf="!slot.prompt">
+        Your image prompt will appear here once you generate.
+      </p>
+
+      <div class="prompt-slot-upload">
+        <div class="image-preview" *ngIf="slot.image">
+          <img [src]="slot.image.previewUrl" [alt]="'Image for prompt ' + (i + 1)" />
+          <button type="button" (click)="removeSlotImage(i)">Remove</button>
+        </div>
+
+        <label class="image-add" *ngIf="!slot.image">
+          <input type="file" accept="image/jpeg,image/png,image/webp" (change)="onSlotFileSelected($event, i)" />
+          Upload image
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <button type="submit" class="primary send-button" [disabled]="publishing">
+    {{ publishing ? 'Posting…' : 'Send' }}
+  </button>
+</form>

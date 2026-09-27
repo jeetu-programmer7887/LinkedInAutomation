@@ -4,7 +4,6 @@ import Post from '../models/Post.js';
 import { linkedin } from '../config/env.js';
 import { createPost, uploadImage } from '../services/linkedinService.js';
 import { generateCaption, generateCaptionWithImagePrompts } from '../services/aiService.js';
-import { generateImage } from '../services/imageService.js';
 
 const MAX_IMAGES = 5;
 // Static images only - no GIFs (LinkedIn silently flattens them to a
@@ -81,21 +80,6 @@ router.post('/generate-caption-and-prompts', async (req, res) => {
 
   const result = await generateCaptionWithImagePrompts(description, count);
   res.json(result);
-});
-
-// Feature 1 add-on: generate an image from a text prompt. Returns the raw
-// image bytes directly (not JSON/base64) so Postman previews it inline,
-// and so the frontend can later fetch it as a Blob and drop it straight
-// into the same images[] list the manual-upload flow already uses.
-router.post('/generate-image', async (req, res) => {
-  const { prompt, width, height } = req.body;
-  if (!prompt) {
-    return res.status(400).json({ error: 'prompt is required' });
-  }
-
-  const { buffer, contentType } = await generateImage(prompt, { width, height });
-  res.set('Content-Type', contentType);
-  res.send(buffer);
 });
 
 // Feature 1, step 2: publish the (possibly hand-edited) caption, with 0-5
