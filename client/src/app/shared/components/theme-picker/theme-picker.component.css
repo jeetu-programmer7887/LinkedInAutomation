@@ -1,77 +1,121 @@
-.theme-picker h3,
-.theme-picker h4 {
-  margin-bottom: var(--space-2);
+.section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding: 24px var(--gutter) 14px;
+  font-size: 13px;
 }
+.section-head h2 { margin: 0; font-size: 22px; }
 
+/* 1 col small phone, 2 phone/tablet, 3 desktop */
 .presets {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--space-2);
-}
-
-@media (min-width: 640px) {
-  .presets {
-    grid-template-columns: repeat(3, 1fr);
-  }
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr));
+  gap: 12px;
+  padding: 20px var(--gutter);
+  border-top: 2px solid var(--color-divider);
+  border-bottom: 2px solid var(--color-divider);
 }
 
 .swatch {
   display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  border: 2px solid transparent;
-  border-radius: var(--radius-md);
-  padding: var(--space-2) var(--space-3);
-  font-weight: 500;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 14px;
+  padding: 20px;
+  border: 1px solid var(--color-hair);
+  border-radius: var(--radius-lg);
+  text-align: left;
+  transition: box-shadow var(--ease), transform var(--ease);
 }
-
 .swatch:hover {
-  filter: brightness(0.97);
+  border-color: var(--color-hair);
+  box-shadow: inset 0 0 0 2px var(--swatch-accent);
+}
+.swatch:hover .swatch-bar { transform: scaleX(1); }
+.swatch.active,
+.swatch.active:hover {
+  box-shadow: inset 0 0 0 4px var(--swatch-accent);
 }
 
-.swatch.active {
-  border-style: solid;
-  box-shadow: 0 0 0 2px var(--color-hover);
+.swatch-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
 }
+.swatch-name { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; }
+.swatch-active {
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.swatch-sample { font-size: 44px; font-weight: 800; line-height: 0.9; letter-spacing: -0.04em; }
+.swatch-bar {
+  height: 8px;
+  transform: scaleX(0.6);
+  transform-origin: left;
+  transition: transform 0.25s ease;
+}
+.swatch.active .swatch-bar { transform: scaleX(1); }
+.swatch-hex { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; opacity: 0.75; }
 
-.swatch-dot {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  flex: none;
-  border: 1px solid rgba(0, 0, 0, 0.15);
-}
-
-.custom {
-  margin-top: var(--space-4);
-}
+/* Custom colors */
+.custom { border-bottom: 2px solid var(--color-divider); padding-bottom: 28px; }
 
 .custom-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-4);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+  gap: var(--space-3);
+  padding: 0 var(--gutter);
 }
+.custom-field { display: flex; flex-direction: column; gap: 6px; }
 
-.custom-row label {
+.color-input {
+  display: flex;
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  transition: border-color var(--ease);
+}
+.color-input:hover { border-color: var(--color-text); }
+.color-input.invalid { border-color: var(--color-danger); }
+.color-input input[type='color'] { border: 0; border-radius: 0; border-right: 1px solid var(--color-divider); }
+.color-input input[type='text'] {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  border-radius: 0;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  text-transform: uppercase;
+}
+.hex-error { font-size: 12px; color: var(--color-danger); }
+
+.contrast {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin: 24px var(--gutter) 0;
+  background-color: var(--color-divider);
+  border: 2px solid var(--color-divider);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.contrast-cell {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
-  font-size: 13px;
+  gap: 2px;
+  min-width: 200px;
+  flex: 1 1 200px;
+  padding: 12px 16px;
+  background-color: var(--color-bg);
+  font-size: 12px;
 }
-
-.custom-row label > span {
-  font-weight: 500;
-}
-
-.custom-row label {
-  flex-direction: row;
-  align-items: center;
-}
-
-.custom-row label > span {
-  width: 90px;
-}
-
-.custom-row input[type='text'] {
-  width: 90px;
-}
+.contrast-cell strong { font-size: 22px; font-variant-numeric: tabular-nums; }
+.verdict { font-weight: 600; color: var(--color-success); }
+.verdict.fail { color: var(--color-danger); }

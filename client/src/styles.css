@@ -1,25 +1,58 @@
-/* Global styles - pure vanilla CSS, no framework. */
+/* Global styles — Modernist design language: flat, softly rounded corners, strong 2px
+   rules, Archivo throughout. Pure vanilla CSS, no framework.
+
+   Theme colors come from ThemeService, which writes --color-bg,
+   --color-text and --color-hover onto <html> at runtime. Every other color
+   below is derived from those three, so all 6 presets and custom themes
+   restyle the whole app instantly. */
 
 :root {
-  /* Default theme (Kiln) - overwritten at runtime by ThemeService via
-     document.documentElement.style, and initialized here so there is no
-     flash of unstyled/wrong-color content before Angular boots. */
   --color-bg: #fbf7f2;
   --color-text: #2b2119;
   --color-hover: #a65a2e;
 
-  --font-sans: -apple-system, 'Segoe UI', system-ui, Roboto, sans-serif;
+  --color-accent: var(--color-hover);
+  --color-surface: color-mix(in srgb, var(--color-text) 5%, var(--color-bg));
+  --color-divider: color-mix(in srgb, var(--color-text) 40%, transparent);
+  --color-hair: color-mix(in srgb, var(--color-text) 14%, transparent);
+  --color-muted: color-mix(in srgb, var(--color-text) 66%, var(--color-bg));
+  --color-accent-soft: color-mix(in srgb, var(--color-hover) 13%, var(--color-bg));
+  --color-tint: color-mix(in srgb, var(--color-text) 7%, transparent);
+  --color-tint-strong: color-mix(in srgb, var(--color-text) 14%, transparent);
+  --color-accent-hover: color-mix(in srgb, var(--color-hover) 84%, var(--color-text));
+  --color-accent-press: color-mix(in srgb, var(--color-hover) 70%, var(--color-text));
+  --color-ink-hover: color-mix(in srgb, var(--color-text) 82%, var(--color-hover));
+  --color-danger: #d23a26;
+  --color-success: #3d8f58;
+
+  /* Kept for any older component CSS that still references it. */
+  --border-color: var(--color-hair);
+
+  --font-sans: 'Archivo', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, 'SFMono-Regular', Menlo, monospace;
 
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 16px;
   --space-4: 24px;
   --space-5: 32px;
+  --space-6: 48px;
 
-  --radius-sm: 4px;
-  --radius-md: 8px;
+  --radius-sm: 6px;   /* tags, badges, small tiles */
+  --radius-md: 10px;  /* buttons, fields, controls */
+  --radius-lg: 14px;  /* cards, image tiles, panels */
 
-  --border-color: color-mix(in srgb, var(--color-text) 15%, transparent);
+  --gutter: 16px;
+  --nav-w: 240px;
+  --shadow-lg: 0 12px 32px color-mix(in srgb, #000 20%, transparent);
+  --ease: 0.15s ease;
+}
+
+@media (min-width: 640px) {
+  :root { --gutter: 24px; }
+}
+@media (min-width: 1024px) {
+  :root { --gutter: 40px; }
 }
 
 *,
@@ -30,7 +63,7 @@
 
 html,
 body {
-  height: 100%;
+  min-height: 100%;
   margin: 0;
   padding: 0;
 }
@@ -39,35 +72,37 @@ body {
   background-color: var(--color-bg);
   color: var(--color-text);
   font-family: var(--font-sans);
-  font-size: 16px;
-  line-height: 1.5;
+  font-size: 15px;
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition: background-color var(--ease), color var(--ease);
 }
 
-h1,
-h2,
-h3,
-h4,
-p {
-  margin: 0 0 var(--space-3);
+h1, h2, h3, h4 {
+  margin: 0 0 var(--space-2);
+  font-weight: 800;
+  line-height: 1.12;
+  letter-spacing: -0.02em;
 }
+
+p { margin: 0 0 var(--space-3); }
 
 a {
-  color: var(--color-hover);
-  text-decoration: none;
+  color: var(--color-text);
+  text-underline-offset: 3px;
+  transition: color var(--ease);
 }
+a:hover { color: var(--color-accent); }
 
-a:hover,
-a:focus-visible {
-  text-decoration: underline;
-}
+img { max-width: 100%; display: block; }
 
-img {
-  max-width: 100%;
-  display: block;
-}
+:focus { outline: none; }
+:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+::selection { background: color-mix(in srgb, var(--color-accent) 30%, transparent); }
 
+/* ── Buttons ───────────────────────────────────────────────────────────
+   Every <button> gets the secondary (outlined) look by default so nothing
+   falls back to browser chrome. Labels sit flush left. */
 button,
 input,
 select,
@@ -76,37 +111,107 @@ textarea {
   color: inherit;
 }
 
-button {
-  cursor: pointer;
-  border: 1px solid var(--color-hover);
+button,
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-2);
+  padding: 9px 14px;
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
   background-color: transparent;
   color: var(--color-text);
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-sm);
-  transition: background-color 0.15s ease, color 0.15s ease;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color var(--ease), color var(--ease), border-color var(--ease), transform 0.08s ease;
 }
-
 button:hover,
-button:focus-visible {
-  background-color: var(--color-hover);
-  color: var(--color-bg);
+.btn:hover {
+  background-color: var(--color-tint);
+  border-color: var(--color-text);
+  color: var(--color-text);
+  text-decoration: none;
 }
-
-button.primary {
-  background-color: var(--color-hover);
-  color: var(--color-bg);
+button:active,
+.btn:active {
+  background-color: var(--color-tint-strong);
+  transform: translateY(1px);
 }
-
-button.primary:hover,
-button.primary:focus-visible {
-  filter: brightness(1.1);
-}
-
-button:disabled {
-  opacity: 0.5;
+button:disabled,
+.btn[aria-disabled='true'] {
+  opacity: 0.45;
   cursor: not-allowed;
+  transform: none;
 }
 
+button.primary,
+.btn-primary {
+  background-color: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-bg);
+}
+button.primary:hover,
+.btn-primary:hover {
+  background-color: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
+  color: var(--color-bg);
+}
+button.primary:active,
+.btn-primary:active {
+  background-color: var(--color-accent-press);
+}
+button.primary:disabled:hover,
+.btn-primary:disabled:hover {
+  background-color: var(--color-accent);
+}
+
+.btn-ink {
+  background-color: var(--color-text);
+  border-color: var(--color-text);
+  color: var(--color-bg);
+}
+.btn-ink:hover {
+  background-color: var(--color-ink-hover);
+  border-color: var(--color-ink-hover);
+  color: var(--color-bg);
+}
+
+.btn-ghost {
+  border-color: transparent;
+  padding-inline: var(--space-2);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.btn-ghost:hover {
+  border-color: transparent;
+  background-color: transparent;
+  color: var(--color-accent);
+  text-decoration: underline;
+}
+.btn-ghost.danger:hover { color: var(--color-danger); }
+
+.btn-block {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+}
+.btn-wide { min-width: 220px; justify-content: space-between; }
+.btn-lg { padding: 16px 18px; font-size: 16px; }
+.btn-sm { padding: 6px 10px; font-size: 13px; }
+.btn-icon {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  justify-content: center;
+}
+
+/* ── Fields ─────────────────────────────────────────────────────────── */
 input[type='text'],
 input[type='email'],
 input[type='number'],
@@ -115,66 +220,233 @@ input[type='date'],
 input[type='datetime-local'],
 textarea,
 select {
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  padding: var(--space-2) var(--space-3);
-  background-color: var(--color-bg);
-  color: var(--color-text);
   width: 100%;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  font-size: 15px;
+  color-scheme: light dark;
+  transition: border-color var(--ease), background-color var(--ease);
 }
-
+input:hover,
+textarea:hover,
+select:hover {
+  border-color: color-mix(in srgb, var(--color-text) 60%, transparent);
+}
 input:focus-visible,
 textarea:focus-visible,
 select:focus-visible {
-  outline: 2px solid var(--color-hover);
-  outline-offset: 1px;
+  border-color: var(--color-accent);
+  outline: 2px solid var(--color-accent);
+  outline-offset: -1px;
 }
+textarea { resize: vertical; line-height: 1.6; }
+select { cursor: pointer; }
 
 input[type='color'] {
-  border: 1px solid var(--border-color);
+  width: 48px;
+  height: 40px;
   padding: 2px;
-  width: 44px;
-  height: 36px;
+  border: 1px solid var(--color-divider);
   border-radius: var(--radius-sm);
+  background: var(--color-bg);
   cursor: pointer;
-  background: none;
 }
 
-/* Fluid, mobile-first layout container used app-wide. */
-.app-container {
-  width: 100%;
-  max-width: 1080px;
-  margin: 0 auto;
-  padding: 0 var(--space-3);
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.field-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-muted);
 }
 
-@media (min-width: 640px) {
-  .app-container {
-    padding: 0 var(--space-4);
-  }
-}
-
-@media (min-width: 1024px) {
-  .app-container {
-    padding: 0 var(--space-5);
-  }
-}
-
-.card {
-  border: 1px solid var(--border-color);
+/* Segmented control: a row of buttons sharing one outline. */
+.seg {
+  display: inline-flex;
+  flex-wrap: wrap;
+  border: 1px solid var(--color-divider);
   border-radius: var(--radius-md);
-  padding: var(--space-4);
-  background-color: var(--color-bg);
+  overflow: hidden;
 }
-
-.error {
-  color: #a31545;
+.seg > button {
+  border: 0;
+  border-radius: 0;
+  border-right: 1px solid var(--color-hair);
+  font-size: 13px;
+  font-weight: 600;
 }
+.seg > button:last-child { border-right: 0; }
+.seg > button:hover { background-color: var(--color-tint); }
+.seg > button.active,
+.seg > button.active:hover {
+  background-color: var(--color-text);
+  color: var(--color-bg);
+}
+.seg-full {
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+}
+.seg-full > button { padding: 12px 14px; font-size: 14px; font-weight: 800; }
 
-.placeholder {
-  opacity: 0.7;
+/* ── Icons (Lucide, drawn with CSS masks so they take currentColor) ──── */
+.icon {
+  display: inline-block;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  background-color: currentColor;
+  -webkit-mask: var(--i) center / contain no-repeat;
+  mask: var(--i) center / contain no-repeat;
+}
+.icon-xs { width: 12px; height: 12px; }
+.icon-sm { width: 16px; height: 16px; }
+.icon-lg { width: 22px; height: 22px; }
+.spin { animation: la-spin 0.9s linear infinite; }
+@keyframes la-spin { to { transform: rotate(360deg); } }
+
+.i-align-left { --i: url('https://unpkg.com/lucide-static@0.469.0/icons/align-left.svg'); }
+.i-arrow-right { --i: url('https://unpkg.com/lucide-static@0.469.0/icons/arrow-right.svg'); }
+.i-arrow-up-right { --i: url('https://unpkg.com/lucide-static@0.469.0/icons/arrow-up-right.svg'); }
+.i-calendar-clock { --i: url('https://unpkg.com/lucide-static@0.469.0/icons/calendar-clock.svg'); }
+.i-check { --i: url('https://unpkg.com/lucide-static@0.469.0/icons/check.svg'); }
+.i-circle-alert { --i: url('https://unpkg.com/lucide-static@0.469.0/icons/circle-alert.svg'); }
+.i-circle-dashed { --i: url('https://unpkg.com/lucide-static@0.469.0/icons/circle-dashed.svg'); }
+.i-clock { --i: url('https://unpkg.com/lucide-static@0.469.0/icons/clock.svg'); }
+.i-copy { --i: url('https://unpkg.com/lucide-static@0.469.0/icons/copy.svg'); }
+.i-globe { --i: url('https://unpkg.com/lucide-static@0.469.0/icons/globe.svg'); }
+.i-image { --i: url('https://unpkg.com/lucide-static@0.469.0/icons/image.svg'); }
+.i-image-plus { --i: url('https://unpkg.com/lucide-static@0.469.0/icons/image-plus.svg'); }
+.i-layout-dashboard { --i: url('https://unpkg.com/lucide-static@0.469.0/icons/layout-dashboard.svg'); }
+.i-lightbulb { --i: url('https://unpkg.com/lucide-static@0.469.0/icons/lightbulb.svg'); }
+.i-log-in { --i: url('https://unpkg.com/lucide-static@0.469.0/icons/log-in.svg'); }
+.i-menu { --i: url('https://unpkg.com/lucide-static@0.469.0/icons/menu.svg'); }
+.i-pen-line { --i: url('https://unpkg.com/lucide-static@0.469.0/icons/pen-line.svg'); }
+.i-plus { --i: url('https://unpkg.com/lucide-static@0.469.0/icons/plus.svg'); }
+.i-refresh-cw { --i: url('https://unpkg.com/lucide-static@0.469.0/icons/refresh-cw.svg'); }
+.i-send { --i: url('https://unpkg.com/lucide-static@0.469.0/icons/send.svg'); }
+.i-settings-2 { --i: url('https://unpkg.com/lucide-static@0.469.0/icons/settings-2.svg'); }
+.i-sparkles { --i: url('https://unpkg.com/lucide-static@0.469.0/icons/sparkles.svg'); }
+.i-upload { --i: url('https://unpkg.com/lucide-static@0.469.0/icons/upload.svg'); }
+.i-user-round { --i: url('https://unpkg.com/lucide-static@0.469.0/icons/user-round.svg'); }
+.i-wand-sparkles { --i: url('https://unpkg.com/lucide-static@0.469.0/icons/wand-sparkles.svg'); }
+.i-x { --i: url('https://unpkg.com/lucide-static@0.469.0/icons/x.svg'); }
+
+/* ── Page structure ─────────────────────────────────────────────────── */
+.page-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--gutter) 28px;
+  border-bottom: 2px solid var(--color-divider);
+}
+@media (min-width: 1024px) {
+  .page-head { padding-top: 40px; }
+}
+.page-head-text {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.kicker {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+.kicker b { color: var(--color-accent); font-weight: 800; }
+.page-title {
+  margin: 0;
+  font-size: clamp(40px, 7vw, 72px);
+  line-height: 0.92;
+  letter-spacing: -0.04em;
+}
+.page-sub {
+  margin: 0;
   max-width: 60ch;
+  font-size: 15px;
+  color: var(--color-muted);
+  text-wrap: pretty;
 }
+
+/* A grid whose 2px gaps draw the rules between cells. */
+.ruled-grid {
+  display: grid;
+  gap: 2px;
+  background-color: var(--color-divider);
+  border-bottom: 2px solid var(--color-divider);
+}
+.ruled-grid > * { background-color: var(--color-bg); min-width: 0; }
+
+.label-caps {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.step-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.step-head h2 { margin: 0; font-size: 22px; }
+.step-title { display: flex; align-items: baseline; gap: 10px; }
+.step-num { font-size: 13px; font-weight: 800; color: var(--color-accent); }
+
+/* ── Tags ───────────────────────────────────────────────────────────── */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border: 1px solid var(--color-divider);
+  white-space: nowrap;
+  border-radius: var(--radius-sm);
+}
+.tag-solid {
+  border-color: transparent;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.tag-accent { background-color: var(--color-accent); border-color: var(--color-accent); color: var(--color-bg); }
+.tag-soft { background-color: var(--color-accent-soft); border-color: transparent; }
+.tag-neutral { background-color: var(--color-hair); border-color: transparent; }
+.tag-success { background-color: color-mix(in srgb, var(--color-success) 22%, var(--color-bg)); border-color: transparent; }
+.tag-danger { background-color: var(--color-danger); border-color: var(--color-danger); color: #fff; }
+
+/* ── Feedback ───────────────────────────────────────────────────────── */
+.error { color: var(--color-danger); font-weight: 600; }
+.error-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  padding: 12px var(--gutter);
+  background-color: color-mix(in srgb, var(--color-danger) 12%, var(--color-bg));
+  border-bottom: 2px solid var(--color-danger);
+  font-size: 14px;
+  font-weight: 500;
+}
+.error-bar .icon { color: var(--color-danger); }
+.placeholder { margin: 0; padding: var(--space-5) var(--gutter); color: var(--color-muted); max-width: 70ch; }
+.muted { color: var(--color-muted); }
 
 .visually-hidden {
   position: absolute;
@@ -183,4 +455,12 @@ input[type='color'] {
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
+}
+
+/* Kept for pages that still wrap content in a centred container. */
+.app-container {
+  width: 100%;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 var(--gutter);
 }

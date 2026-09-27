@@ -3,8 +3,8 @@ import { forkJoin } from 'rxjs';
 import { DashboardService } from '../core/services/dashboard.service';
 import { PostService } from '../core/services/post.service';
 import { DashboardSummary } from '../core/models/dashboard.model';
-import { Post, PostStatus } from '../core/models/post.model';
-import { PostFormat } from '../core/models/idea.model';
+import { Post } from '../core/models/post.model';
+import { POST_TYPE_LABELS, STATUS_LABELS, excerpt } from '../core/models/post-labels';
 
 interface Breakdown {
   label: string;
@@ -12,19 +12,12 @@ interface Breakdown {
   share: number; // 0-100, for the bar width
 }
 
-export const POST_TYPE_LABELS: Record<PostFormat, string> = {
-  text: 'Text',
-  text_image: 'Text + Image',
-  text_image_prompts: 'Text + Image prompts',
-};
-
-const STATUS_LABELS: Partial<Record<PostStatus, string>> = {
-  published: 'Published',
-  scheduled: 'Scheduled',
-  publishing: 'Publishing',
-  failed: 'Failed',
-  cancelled: 'Cancelled',
-};
+interface Tile {
+  label: string;
+  value: number;
+  sub: string;
+  alert?: boolean;
+}
 
 /**
  * Everything the app has recorded: how many posts were created (published,
@@ -45,7 +38,7 @@ export class DashboardComponent implements OnInit {
 
   loading = true;
   error: string | null = null;
-  editingId: string | null = null;
+  editingPost: Post | null = null;
   cancellingId: string | null = null;
 
   readonly statusFilters = [
@@ -87,7 +80,7 @@ export class DashboardComponent implements OnInit {
 
   setStatusFilter(value: string): void {
     this.statusFilter = value;
-    this.editingId = null;
+    this.editingPost = null;
     this.reload();
   }
 
@@ -95,12 +88,24 @@ export class DashboardComponent implements OnInit {
     return this.summary?.byStatus[status] ?? 0;
   }
 
+  get tiles(): Tile[] {
+    if (!this.summary) return [];
+    const failed = this.count('failed');
+    return [
+      { label: 'Posts created', value: this.summary.total, sub: `${this.summary.last7Days} this week · ${this.summary.last30Days} in 30 days` },
+      { label: 'Published', value: this.count('published'), sub: 'Live on LinkedIn' },
+      { label: 'Scheduled', value: this.count('scheduled') + this.count('publishing'), sub: 'Waiting in the queue' },
+      { label: 'Failed', value: failed, sub: failed ? 'Needs a fix' : 'All clear', alert: failed > 0 },
+      { label: 'Cancelled', value: this.count('cancelled'), sub: 'Kept for the record' },
+    ];
+  }
+
   get typeBreakdown(): Breakdown[] {
     return this.breakdown(this.summary?.byType ?? {}, POST_TYPE_LABELS);
   }
 
   get sourceBreakdown(): Breakdown[] {
-    return this.breakdown(this.summary?.bySource ?? {}, { idea: 'From trending ideas', manual: 'Written from scratch' });
+    return this.breakdown(this.summary?.bySource ?? {}, { idea: 'From an idea', manual: 'Written from scratch' });
   }
 
   typeLabel(post: Post): string {
@@ -112,20 +117,19 @@ export class DashboardComponent implements OnInit {
   }
 
   excerpt(text: string): string {
-    const flat = text.replace(/\s+/g, ' ').trim();
-    return flat.length > 140 ? `${flat.slice(0, 140)}…` : flat;
+    return excerpt(text, 180);
   }
 
   canEdit(post: Post): boolean {
     return post.status === 'failed' || post.status === 'scheduled';
   }
 
-  toggleEditor(post: Post): void {
-    this.editingId = this.editingId === post._id ? null : post._id;
+  openEditor(post: Post): void {
+    this.editingPost = post;
   }
 
   onSaved(): void {
-    this.editingId = null;
+    this.editingPost = null;
     this.reload();
   }
 
@@ -143,6 +147,10 @@ export class DashboardComponent implements OnInit {
         this.reload();
       },
     });
+  }
+
+  trackByLabel(_: number, item: { label: string }): string {
+    return item.label;
   }
 
   private breakdown(counts: Record<string, number>, labels: Record<string, string>): Breakdown[] {

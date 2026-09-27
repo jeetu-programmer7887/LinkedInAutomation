@@ -1,5 +1,8 @@
 <div class="theme-picker">
-  <h3>Theme</h3>
+  <div class="section-head">
+    <h2>Presets</h2>
+    <span class="muted">Every preset passes WCAG AA for body text.</span>
+  </div>
 
   <div class="presets">
     <button
@@ -7,54 +10,63 @@
       class="swatch"
       *ngFor="let preset of presets"
       [class.active]="isActivePreset(preset)"
+      [attr.aria-pressed]="isActivePreset(preset)"
       (click)="choosePreset(preset)"
       [style.background]="preset.background"
       [style.color]="preset.text"
-      [style.border-color]="preset.hover"
+      [style.--swatch-accent]="preset.hover"
+      [title]="'Apply the ' + preset.name + ' theme'"
     >
-      <span class="swatch-dot" [style.background]="preset.hover"></span>
-      {{ preset.name }}
+      <span class="swatch-top">
+        <span class="swatch-name">{{ preset.name }}</span>
+        <span class="swatch-active" *ngIf="isActivePreset(preset)" [style.background]="preset.hover" [style.color]="preset.background">
+          Active
+        </span>
+      </span>
+      <span class="swatch-sample">Aa</span>
+      <span class="swatch-bar" [style.background]="preset.hover"></span>
+      <span class="swatch-hex">{{ preset.background }} · {{ preset.text }} · {{ preset.hover }}</span>
     </button>
   </div>
 
   <div class="custom">
-    <h4>Custom colors</h4>
+    <div class="section-head">
+      <h2>Custom colors</h2>
+      <span class="muted">Changes apply instantly, app-wide.</span>
+    </div>
+
     <div class="custom-row">
-      <label>
-        <span>Background</span>
-        <input type="color" [(ngModel)]="customColors.background" (change)="applyCustom()" />
-        <input
-          type="text"
-          [(ngModel)]="customColors.background"
-          (change)="applyCustom()"
-          maxlength="7"
-          aria-label="Background hex code"
-        />
+      <label class="custom-field" *ngFor="let f of customFields">
+        <span class="field-label">{{ f.label }}</span>
+        <span class="color-input" [class.invalid]="!isValid(customColors[f.key])">
+          <input type="color" [(ngModel)]="customColors[f.key]" (change)="applyCustom()" [attr.aria-label]="f.label" />
+          <input
+            type="text"
+            [(ngModel)]="customColors[f.key]"
+            (change)="applyCustom()"
+            maxlength="7"
+            [attr.aria-label]="f.label + ' hex code'"
+          />
+        </span>
+        <span class="hex-error" *ngIf="!isValid(customColors[f.key])">Use a 6-digit hex like #A65A2E</span>
       </label>
+    </div>
 
-      <label>
-        <span>Text</span>
-        <input type="color" [(ngModel)]="customColors.text" (change)="applyCustom()" />
-        <input
-          type="text"
-          [(ngModel)]="customColors.text"
-          (change)="applyCustom()"
-          maxlength="7"
-          aria-label="Text hex code"
-        />
-      </label>
-
-      <label>
-        <span>Hover</span>
-        <input type="color" [(ngModel)]="customColors.hover" (change)="applyCustom()" />
-        <input
-          type="text"
-          [(ngModel)]="customColors.hover"
-          (change)="applyCustom()"
-          maxlength="7"
-          aria-label="Hover hex code"
-        />
-      </label>
+    <div class="contrast">
+      <div class="contrast-cell">
+        <span class="muted">Text on background</span>
+        <strong>{{ textContrast | number: '1.1-1' }} : 1</strong>
+        <span class="verdict" [class.fail]="textContrast < 4.5">
+          {{ textContrast >= 4.5 ? 'Passes AA (4.5 : 1)' : 'Below AA — hard to read' }}
+        </span>
+      </div>
+      <div class="contrast-cell">
+        <span class="muted">Accent on background</span>
+        <strong>{{ accentContrast | number: '1.1-1' }} : 1</strong>
+        <span class="verdict" [class.fail]="accentContrast < 3">
+          {{ accentContrast >= 3 ? 'Passes 3 : 1 for buttons' : 'Below 3 : 1 — buttons fade' }}
+        </span>
+      </div>
     </div>
   </div>
 </div>

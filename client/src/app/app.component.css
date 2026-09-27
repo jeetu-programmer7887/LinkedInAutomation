@@ -1,4 +1,17 @@
-.page {
-  padding-top: var(--space-4);
-  padding-bottom: var(--space-5);
+/* Mobile + tablet: the nav is a sticky top bar above the page.
+   Desktop (>= 1024px): a fixed-width rail on the left, page on the right. */
+.shell {
+  min-height: 100vh;
+}
+
+.main {
+  min-width: 0;
+  padding-bottom: var(--space-6);
+}
+
+@media (min-width: 1024px) {
+  .shell {
+    display: grid;
+    grid-template-columns: var(--nav-w) minmax(0, 1fr);
+  }
 }

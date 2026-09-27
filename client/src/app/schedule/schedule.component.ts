@@ -1,9 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { IdeaService } from '../core/services/idea.service';
-import { PostService } from '../core/services/post.service';
 import { IdeaBatch, IdeasOverview, PostFormat } from '../core/models/idea.model';
-import { Post } from '../core/models/post.model';
 
+/** The Ideas page: daily research time plus the latest batch of researched ideas. */
 @Component({
   selector: 'app-schedule',
   templateUrl: './schedule.component.html',
@@ -11,7 +10,6 @@ import { Post } from '../core/models/post.model';
 })
 export class ScheduleComponent implements OnInit {
   overview: IdeasOverview | null = null;
-  scheduledPosts: Post[] = [];
 
   researchTime = '';
   savingTime = false;
@@ -19,27 +17,26 @@ export class ScheduleComponent implements OnInit {
 
   loading = true;
   refreshing = false;
-  cancellingId: string | null = null;
   error: string | null = null;
 
   readonly formats: { value: PostFormat; label: string }[] = [
-    { value: 'text', label: 'Text' },
-    { value: 'text_image', label: 'Text + Image' },
-    { value: 'text_image_prompts', label: 'Text + Image prompts' },
+    { value: 'text', label: 'Text only' },
+    { value: 'text_image', label: 'Text + image' },
+    { value: 'text_image_prompts', label: 'Text + image prompts' },
   ];
 
-  constructor(
-    private readonly ideaService: IdeaService,
-    private readonly postService: PostService
-  ) {}
+  constructor(private readonly ideaService: IdeaService) {}
 
   ngOnInit(): void {
     this.loadOverview();
-    this.loadScheduledPosts();
   }
 
   get batch(): IdeaBatch | null {
     return this.overview?.latest ?? null;
+  }
+
+  get timeUnchanged(): boolean {
+    return this.researchTime === this.overview?.settings?.researchTime;
   }
 
   /** The most recent run failed after the ideas on screen were made. */
@@ -62,13 +59,6 @@ export class ScheduleComponent implements OnInit {
         this.error = err.error?.error || 'Could not load ideas. Is the server running?';
         this.loading = false;
       },
-    });
-  }
-
-  loadScheduledPosts(): void {
-    this.postService.getScheduled().subscribe({
-      next: (posts) => (this.scheduledPosts = posts),
-      error: (err) => (this.error = err.error?.error || 'Could not load scheduled posts.'),
     });
   }
 
@@ -108,25 +98,7 @@ export class ScheduleComponent implements OnInit {
     });
   }
 
-  cancelScheduledPost(post: Post): void {
-    if (!confirm('Cancel this scheduled post? It will not be published.')) return;
-    this.error = null;
-    this.cancellingId = post._id;
-    this.postService.cancelScheduled(post._id).subscribe({
-      next: () => {
-        this.scheduledPosts = this.scheduledPosts.filter((p) => p._id !== post._id);
-        this.cancellingId = null;
-      },
-      error: (err) => {
-        this.error = err.error?.error || 'Could not cancel the post.';
-        this.cancellingId = null;
-        this.loadScheduledPosts();
-      },
-    });
-  }
-
-  excerpt(text: string): string {
-    const flat = text.replace(/\s+/g, ' ').trim();
-    return flat.length > 160 ? `${flat.slice(0, 160)}…` : flat;
+  pad(index: number): string {
+    return String(index + 1).padStart(2, '0');
   }
 }

@@ -1,28 +1,62 @@
-<header class="nav">
-  <div class="nav-inner app-container">
-    <a class="brand" routerLink="/compose">LinkedIn Automation</a>
+<header class="rail" [class.open]="isMenuOpen">
+  <div class="rail-top">
+    <a class="brand" routerLink="/compose" title="Go to Compose">
+      <span class="brand-kicker">Studio</span>
+      <span class="brand-name">LinkedIn <br />Automation</span>
+    </a>
 
     <button
-      class="menu-toggle"
+      class="menu-toggle btn-icon"
       type="button"
       [attr.aria-expanded]="isMenuOpen"
       aria-controls="primary-nav"
+      [title]="isMenuOpen ? 'Close menu' : 'Open menu'"
       (click)="toggleMenu()"
     >
       <span class="visually-hidden">Toggle menu</span>
-      <span class="bar"></span>
-      <span class="bar"></span>
-      <span class="bar"></span>
+      <span class="icon" [ngClass]="isMenuOpen ? 'i-x' : 'i-menu'"></span>
     </button>
+  </div>
 
-    <nav id="primary-nav" class="links" [class.open]="isMenuOpen">
+  <div id="primary-nav" class="rail-body">
+    <nav class="links" aria-label="Primary">
       <a
-        *ngFor="let link of links"
+        *ngFor="let link of links; let i = index"
         [routerLink]="link.path"
         routerLinkActive="active"
-        (click)="closeMenu()"
-        >{{ link.label }}</a
+        [title]="link.hint"
       >
+        <span class="num">0{{ i + 1 }}</span>
+        <span class="icon" [ngClass]="link.icon"></span>
+        <span class="label">{{ link.label }}</span>
+        <span
+          class="badge"
+          *ngIf="badge(link.path) as count"
+          [class.danger]="link.path === '/dashboard'"
+          [title]="badgeTitle(link.path)"
+          >{{ count }}</span
+        >
+      </a>
     </nav>
+
+    <a class="next-up" routerLink="/queue" title="Open the queue">
+      <span class="label-caps">Next up</span>
+      <ng-container *ngIf="nextPost; else nothingNext">
+        <strong>{{ nextPost.scheduledFor | date: 'EEE d MMM, h:mm a' }}</strong>
+        <span class="next-text">{{ excerpt(nextPost.content.text) }}</span>
+      </ng-container>
+      <ng-template #nothingNext><span class="next-text">Nothing scheduled.</span></ng-template>
+    </a>
+
+    <a class="theme-chip" routerLink="/settings" title="Change the theme">
+      <span class="chips" aria-hidden="true">
+        <span class="chip chip-bg"></span>
+        <span class="chip chip-text"></span>
+        <span class="chip chip-accent"></span>
+      </span>
+      <span>Theme · <strong>{{ themeName }}</strong></span>
+    </a>
   </div>
 </header>
+
+<div class="scrim" *ngIf="isMenuOpen" (click)="closeMenu()" aria-hidden="true"></div>

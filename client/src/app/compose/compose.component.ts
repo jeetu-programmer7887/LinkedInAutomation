@@ -5,12 +5,19 @@ import { PostService } from '../core/services/post.service';
 import { IdeaService } from '../core/services/idea.service';
 import { Post } from '../core/models/post.model';
 import { Idea, IdeaRef, PostFormat } from '../core/models/idea.model';
+import { POST_TYPE_LABELS } from '../core/models/post-labels';
 
 type PostType = PostFormat;
 const POST_TYPES: PostType[] = ['text', 'text_image', 'text_image_prompts'];
 
 // Matches the server: a scheduled post needs at least one scheduler tick.
 const MIN_SCHEDULE_LEAD_MS = 2 * 60_000;
+
+// LinkedIn's own post length limit, and roughly where its feed folds a
+// post behind "…more" (about 3 lines). Both are display-only guides - the
+// server does not enforce them.
+const CAPTION_LIMIT = 3000;
+const FEED_FOLD_CHARS = 210;
 
 interface SelectedImage {
   file: File;
@@ -23,10 +30,31 @@ interface PromptSlot {
   image: SelectedImage | null;
 }
 
+interface PreviewTile {
+  url: string;
+  span: number;
+  ratio: string;
+}
+
+interface ReadyCheck {
+  state: 'ok' | 'wait' | 'bad';
+  label: string;
+  sub: string;
+}
+
 const MAX_IMAGES = 5;
 // Static images only - no GIFs (LinkedIn flattens them to a single still
 // frame anyway, so animation would silently be lost) and no video.
 const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+
+// How the feed preview lays out 1-5 images on a 6-column grid.
+const TILE_LAYOUTS: Record<number, [number, string][]> = {
+  1: [[6, '4 / 3']],
+  2: [[3, '1'], [3, '1']],
+  3: [[6, '16 / 9'], [3, '1'], [3, '1']],
+  4: [[6, '16 / 9'], [2, '1'], [2, '1'], [2, '1']],
+  5: [[3, '1'], [3, '1'], [2, '1'], [2, '1'], [2, '1']],
+};
 
 @Component({
   selector: 'app-compose',
@@ -36,7 +64,7 @@ const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 export class ComposeComponent implements OnInit, OnDestroy {
   postType: PostType = 'text';
 
-  // Set when Compose was opened from an idea card on the Schedule page;
+  // Set when Compose was opened from an idea card on the Ideas page;
   // the caption calls then ground the post in that idea's research.
   ideaRef: IdeaRef | null = null;
   idea: Idea | null = null;
@@ -59,8 +87,18 @@ export class ComposeComponent implements OnInit, OnDestroy {
   error: string | null = null;
   publishedPost: Post | null = null;
 
+  /** Feed preview: whether the "…more" fold is opened. */
+  previewExpanded = false;
+
   readonly maxImages = MAX_IMAGES;
+  readonly captionLimit = CAPTION_LIMIT;
   readonly imageCountOptions = Array.from({ length: MAX_IMAGES }, (_, i) => i + 1);
+  readonly typeLabels = POST_TYPE_LABELS;
+  readonly formatOptions: { value: PostType; label: string; sub: string; icon: string }[] = [
+    { value: 'text', label: 'Text only', sub: 'Caption only', icon: 'i-align-left' },
+    { value: 'text_image', label: 'Text + images', sub: 'Attach up to 5 of your own', icon: 'i-image' },
+    { value: 'text_image_prompts', label: 'Text + image prompts', sub: 'AI writes a prompt per image', icon: 'i-wand-sparkles' },
+  ];
 
   private querySub?: Subscription;
 
@@ -71,7 +109,7 @@ export class ComposeComponent implements OnInit, OnDestroy {
     private readonly router: Router
   ) {}
 
-  /** Reads ?idea=<batchId>&index=<n>&type=<format> from the Schedule page's idea cards. */
+  /** Reads ?idea=<batchId>&index=<n>&type=<format> from the Ideas page's cards. */
   ngOnInit(): void {
     this.querySub = this.route.queryParamMap.subscribe((params) => {
       const type = params.get('type') as PostType | null;
@@ -141,6 +179,11 @@ export class ComposeComponent implements OnInit, OnDestroy {
     }
   }
 
+  setImageCount(count: number): void {
+    this.imageCount = count;
+    this.syncSlots();
+  }
+
   /**
    * Keeps one slot per requested image so the upload boxes are visible
    * straight away, before anything has been generated. Existing prompts
@@ -160,6 +203,15 @@ export class ComposeComponent implements OnInit, OnDestroy {
     this.slots = next;
   }
 
+  /** Single entry point for the Generate button - picks the right call for the format. */
+  generate(): void {
+    if (this.postType === 'text_image_prompts') {
+      this.generateCaptionAndPrompts();
+    } else {
+      this.generateCaption();
+    }
+  }
+
   generateCaption(): void {
     if (!this.description.trim()) {
       this.error = 'Describe what the post should be about first.';
@@ -170,6 +222,7 @@ export class ComposeComponent implements OnInit, OnDestroy {
     this.postService.generateCaption(this.description.trim(), this.ideaRef ?? undefined).subscribe({
       next: ({ caption }) => {
         this.caption = caption;
+        this.previewExpanded = false;
         this.generating = false;
       },
       error: (err) => {
@@ -179,7 +232,7 @@ export class ComposeComponent implements OnInit, OnDestroy {
     });
   }
 
-  /** Caption + one prompt per image, in a single call, for the prompts tab. */
+  /** Caption + one prompt per image, in a single call, for the prompts format. */
   generateCaptionAndPrompts(): void {
     if (!this.description.trim()) {
       this.error = 'Describe what the post should be about first.';
@@ -193,6 +246,7 @@ export class ComposeComponent implements OnInit, OnDestroy {
       .subscribe({
         next: ({ caption, imagePrompts }) => {
           this.caption = caption;
+          this.previewExpanded = false;
           // Fill the slots that are already on screen, so any images the
           // author uploaded before generating stay where they are.
           this.syncSlots();
@@ -208,6 +262,19 @@ export class ComposeComponent implements OnInit, OnDestroy {
           this.generating = false;
         },
       });
+  }
+
+  get generateLabel(): string {
+    const prompts = this.postType === 'text_image_prompts';
+    if (this.generating) return prompts ? 'Writing caption and prompts…' : 'Writing caption…';
+    if (prompts) return `Generate caption + ${this.imageCount} image prompt${this.imageCount === 1 ? '' : 's'}`;
+    return this.caption ? 'Regenerate caption' : 'Generate caption';
+  }
+
+  get generateHint(): string {
+    if (this.idea) return "Grounded in the idea's researched facts.";
+    if (this.caption) return "Regenerating replaces the caption you've edited.";
+    return 'Written in your voice from your author profile.';
   }
 
   copyPrompt(index: number): void {
@@ -275,6 +342,95 @@ export class ComposeComponent implements OnInit, OnDestroy {
     return this.slots.filter((slot) => slot.image).length;
   }
 
+  get mediaCountLabel(): string {
+    if (this.postType === 'text_image') return `${this.images.length} / ${this.maxImages}`;
+    if (this.postType === 'text_image_prompts') return `${this.filledSlotCount} / ${this.slots.length} uploaded`;
+    return '';
+  }
+
+  // ── Feed preview ──────────────────────────────────────────────────────
+
+  private get foldIndex(): number {
+    const firstThreeLines = this.caption.split('\n').slice(0, 3).join('\n').length;
+    return Math.min(FEED_FOLD_CHARS, firstThreeLines);
+  }
+
+  get previewIsLong(): boolean {
+    return this.caption.length > this.foldIndex + 1;
+  }
+
+  get previewText(): string {
+    return this.previewIsLong && !this.previewExpanded ? this.caption.slice(0, this.foldIndex).trimEnd() : this.caption;
+  }
+
+  get previewTiles(): PreviewTile[] {
+    const urls =
+      this.postType === 'text_image'
+        ? this.images.map((img) => img.previewUrl)
+        : this.postType === 'text_image_prompts'
+        ? this.slots.filter((slot) => slot.image).map((slot) => slot.image!.previewUrl)
+        : [];
+    const layout = TILE_LAYOUTS[urls.length] ?? [];
+    return urls.map((url, i) => ({ url, span: layout[i][0], ratio: layout[i][1] }));
+  }
+
+  private get scheduleIsValid(): boolean {
+    const when = this.scheduledFor ? new Date(this.scheduledFor).getTime() : NaN;
+    return !Number.isNaN(when) && when >= Date.now() + MIN_SCHEDULE_LEAD_MS;
+  }
+
+  /** Mirrors the server's validation so problems show before Send. */
+  get checks(): ReadyCheck[] {
+    const len = this.caption.length;
+    const checks: ReadyCheck[] = [
+      {
+        state: !len ? 'wait' : len > CAPTION_LIMIT ? 'bad' : 'ok',
+        label: !len ? 'No caption yet' : len > CAPTION_LIMIT ? "Caption is over LinkedIn's limit" : 'Caption ready',
+        sub: `${len.toLocaleString()} of ${CAPTION_LIMIT.toLocaleString()} characters`,
+      },
+    ];
+
+    if (this.postType === 'text') {
+      checks.push({ state: 'ok', label: 'Text-only post', sub: 'No media attached' });
+    } else if (this.postType === 'text_image') {
+      const n = this.images.length;
+      checks.push({
+        state: n ? 'ok' : 'wait',
+        label: n ? `${n} image${n === 1 ? '' : 's'} attached` : 'No images yet',
+        sub: 'JPEG, PNG or WEBP · posts as text only if none',
+      });
+    } else {
+      const filled = this.filledSlotCount;
+      checks.push({
+        state: filled && filled === this.slots.length ? 'ok' : 'wait',
+        label: `${filled} of ${this.slots.length} images uploaded`,
+        sub: 'Only filled slots are posted',
+      });
+    }
+
+    if (this.publishMode === 'now') {
+      checks.push({ state: 'ok', label: 'Publishes immediately', sub: 'Straight to your LinkedIn feed' });
+    } else {
+      const valid = this.scheduleIsValid;
+      checks.push({
+        state: valid ? 'ok' : this.scheduledFor ? 'bad' : 'wait',
+        label: valid ? 'Scheduled time is set' : this.scheduledFor ? 'That time is too soon' : 'Pick a date and time',
+        sub: 'At least 2 minutes from now',
+      });
+    }
+    return checks;
+  }
+
+  checkIcon(check: ReadyCheck): string {
+    return check.state === 'ok' ? 'i-check' : check.state === 'bad' ? 'i-circle-alert' : 'i-circle-dashed';
+  }
+
+  trackByIndex(index: number): number {
+    return index;
+  }
+
+  // ── Send ──────────────────────────────────────────────────────────────
+
   send(): void {
     if (!this.caption.trim()) {
       this.error = 'Generate or write a caption first.';
@@ -327,6 +483,7 @@ export class ComposeComponent implements OnInit, OnDestroy {
       next: (post) => {
         this.publishedPost = post;
         this.publishing = false;
+        window.scrollTo({ top: 0 });
       },
       error: (err) => {
         this.error = err.error?.error || 'Publishing failed. Try again.';
@@ -347,6 +504,7 @@ export class ComposeComponent implements OnInit, OnDestroy {
     this.publishMode = 'now';
     this.scheduledFor = '';
     this.publishedPost = null;
+    this.previewExpanded = false;
     this.error = null;
     if (this.idea) {
       this.clearIdea();
