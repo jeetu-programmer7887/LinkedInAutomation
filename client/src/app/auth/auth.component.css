@@ -1,0 +1,8 @@
+.auth-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--gutter);
+}
+.auth-body .error-bar { width: 100%; }

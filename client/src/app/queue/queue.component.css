@@ -1,0 +1,77 @@
+/* Phone: day label stacked above its posts.
+   Tablet+ (>= 768px): day label in a fixed left column. */
+.day {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  border-bottom: 2px solid var(--color-divider);
+}
+@media (min-width: 768px) {
+  .day { grid-template-columns: 220px minmax(0, 1fr); }
+}
+
+.day-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 20px var(--gutter);
+  border-bottom: 1px solid var(--color-hair);
+  background-color: var(--color-surface);
+}
+@media (min-width: 768px) {
+  .day-label {
+    padding: 24px;
+    border-bottom: 0;
+    border-right: 2px solid var(--color-divider);
+    background-color: transparent;
+  }
+}
+.day-rel {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+}
+.day-date {
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+
+.day-posts {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  min-width: 0;
+}
+
+.item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  padding: 20px var(--gutter);
+  border-bottom: 1px solid var(--color-hair);
+  transition: background-color var(--ease);
+}
+.item:last-child { border-bottom: 0; }
+.item:hover { background-color: var(--color-tint); }
+@media (min-width: 640px) {
+  .item {
+    grid-template-columns: 96px minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 20px;
+    padding: 22px 28px;
+  }
+}
+
+.item-time {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.item-body { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.item-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.item-text { margin: 0; font-size: 14px; line-height: 1.55; text-wrap: pretty; }
+.item-actions { display: flex; flex-wrap: wrap; gap: 6px; }

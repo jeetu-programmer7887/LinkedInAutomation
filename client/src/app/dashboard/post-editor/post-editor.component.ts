@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
+import { Component, EventEmitter, HostListener, Input, OnDestroy, OnInit, Output } from '@angular/core';
 import { PostService } from '../../core/services/post.service';
 import { Post } from '../../core/models/post.model';
 
@@ -19,8 +19,9 @@ function toLocalInput(date: Date): string {
 }
 
 /**
- * Fix a failed post or edit a scheduled one: change the caption, replace,
- * remove or add images, then reschedule it or post it right away.
+ * Side drawer to fix a failed post or edit a scheduled one: change the
+ * caption, replace, remove or add images, then reschedule it or post it
+ * right away. Used by the Dashboard and the Queue.
  */
 @Component({
   selector: 'app-post-editor',
@@ -42,6 +43,9 @@ export class PostEditorComponent implements OnInit, OnDestroy {
   error: string | null = null;
 
   readonly maxImages = MAX_IMAGES;
+  readonly captionLimit = 3000;
+
+  private previousOverflow = '';
 
   constructor(private readonly postService: PostService) {}
 
@@ -58,10 +62,20 @@ export class PostEditorComponent implements OnInit, OnDestroy {
     const suggested =
       current && current.getTime() > Date.now() + MIN_SCHEDULE_LEAD_MS ? current : new Date(Date.now() + 60 * 60_000);
     this.scheduledFor = toLocalInput(suggested);
+
+    // Stop the page behind the drawer from scrolling.
+    this.previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
   }
 
   ngOnDestroy(): void {
+    document.body.style.overflow = this.previousOverflow;
     this.slots.forEach((slot) => slot.kind === 'new' && URL.revokeObjectURL(slot.previewUrl));
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    if (!this.saving) this.closed.emit();
   }
 
   get isFailed(): boolean {
@@ -70,6 +84,12 @@ export class PostEditorComponent implements OnInit, OnDestroy {
 
   get minScheduleTime(): string {
     return toLocalInput(new Date(Date.now() + MIN_SCHEDULE_LEAD_MS));
+  }
+
+  get saveLabel(): string {
+    if (this.saving) return this.mode === 'now' ? 'Posting…' : 'Saving…';
+    if (this.mode === 'now') return 'Save & post now';
+    return this.isFailed ? 'Save & reschedule' : 'Save changes';
   }
 
   imageUrl(slot: ImageSlot): string {

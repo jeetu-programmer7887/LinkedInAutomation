@@ -1,108 +1,97 @@
-<h1>Schedule</h1>
-
-<p *ngIf="error" class="error">{{ error }}</p>
-
-<section class="card research-time">
-  <h2>Daily research</h2>
-  <p class="hint">
-    Every day at this time the app searches what's trending in your niche and saves 3 fresh post ideas here.
-  </p>
-  <form class="time-row" (ngSubmit)="saveResearchTime()">
-    <label>
-      <span class="visually-hidden">Research time</span>
-      <input type="time" [(ngModel)]="researchTime" name="researchTime" required />
-    </label>
-    <span class="timezone" *ngIf="overview">{{ overview.settings.timezone }}</span>
-    <button type="submit" [disabled]="savingTime || researchTime === overview?.settings?.researchTime">
-      {{ savingTime ? 'Saving…' : timeSaved ? 'Saved' : 'Save time' }}
-    </button>
-  </form>
-</section>
-
-<section class="ideas">
-  <div class="section-header">
-    <div>
-      <h2>Post ideas</h2>
-      <p class="meta" *ngIf="batch">
-        Researched {{ batch.createdAt | date: 'd MMM, h:mm a' }} ·
-        {{ batch.trigger === 'scheduled' ? 'daily run' : 'on demand' }}
-      </p>
-    </div>
-    <button type="button" class="primary" (click)="getFreshIdeas()" [disabled]="refreshing">
-      {{ refreshing ? 'Researching… (up to 30s)' : 'Get fresh ideas' }}
-    </button>
+<header class="page-head">
+  <div class="page-head-text">
+    <span class="kicker"><b>02</b> — Research</span>
+    <h1 class="page-title">Ideas</h1>
+    <p class="page-sub" *ngIf="batch">
+      Researched {{ batch.createdAt | date: 'd MMM, h:mm a' }} ·
+      {{ batch.trigger === 'scheduled' ? 'daily run' : 'on demand' }} · {{ batch.ideas.length }} ideas
+    </p>
+    <p class="page-sub" *ngIf="!batch && !loading">Fresh post ideas from what's trending in your niche.</p>
   </div>
+  <button
+    type="button"
+    class="primary btn-wide btn-lg"
+    (click)="getFreshIdeas()"
+    [disabled]="refreshing"
+    title="Search the web now for new ideas"
+  >
+    <span>{{ refreshing ? 'Researching… up to 30s' : 'Get fresh ideas' }}</span>
+    <span class="icon i-refresh-cw" [class.spin]="refreshing"></span>
+  </button>
+</header>
 
-  <p class="error" *ngIf="lastRunFailure">The last research run failed: {{ lastRunFailure }}</p>
+<form class="research-bar" (ngSubmit)="saveResearchTime()">
+  <span class="research-title"><span class="icon icon-sm i-clock"></span> Daily research</span>
+  <label>
+    <span class="visually-hidden">Research time</span>
+    <input type="time" [(ngModel)]="researchTime" name="researchTime" required />
+  </label>
+  <span class="muted timezone" *ngIf="overview">{{ overview.settings.timezone }}</span>
+  <button type="submit" class="btn-sm" [disabled]="savingTime || timeUnchanged" title="Save the daily research time">
+    {{ savingTime ? 'Saving…' : timeSaved ? 'Saved' : 'Save time' }}
+  </button>
+  <span class="muted research-hint">Every day at this time the app searches what's trending in your niche and saves 3 fresh ideas here.</span>
+</form>
 
-  <p class="placeholder" *ngIf="loading">Loading ideas…</p>
+<p class="error-bar" *ngIf="error" role="alert"><span class="icon i-circle-alert"></span>{{ error }}</p>
+<p class="error-bar" *ngIf="lastRunFailure" role="alert">
+  <span class="icon i-circle-alert"></span>The last research run failed: {{ lastRunFailure }}
+</p>
 
-  <div class="card empty" *ngIf="!loading && !batch">
-    <p>No ideas yet. They'll appear after the daily research runs, or click <strong>Get fresh ideas</strong> now.</p>
-  </div>
+<p class="placeholder" *ngIf="loading && !batch">Loading ideas…</p>
 
-  <div class="idea-grid" *ngIf="batch" [class.stale]="refreshing">
-    <article class="card idea-card" *ngFor="let idea of batch.ideas; let i = index">
-      <span class="badge" [class.evergreen]="idea.kind === 'evergreen'">
-        {{ idea.kind === 'trending' ? 'Trending' : 'Evergreen concept' }}
+<p class="placeholder" *ngIf="!loading && !batch">
+  No ideas yet. They'll appear after the daily research runs, or click <strong>Get fresh ideas</strong> now.
+</p>
+
+<div class="ruled-grid ideas" *ngIf="batch" [class.stale]="refreshing">
+  <article class="idea" *ngFor="let idea of batch.ideas; let i = index">
+    <div class="idea-top">
+      <span class="idea-num">{{ pad(i) }}</span>
+      <span class="tag tag-solid" [ngClass]="idea.kind === 'trending' ? 'tag-accent' : 'tag-neutral'">
+        {{ idea.kind === 'trending' ? 'Trending' : 'Evergreen' }}
       </span>
-      <h3>{{ idea.topic }}</h3>
+    </div>
 
-      <dl>
-        <dt>Why now</dt>
-        <dd>{{ idea.whyTrending }}</dd>
-        <dt>Angle</dt>
-        <dd>{{ idea.angle }}</dd>
-        <dt>Key facts</dt>
-        <dd>
-          <ul class="key-points">
-            <li *ngFor="let point of idea.keyPoints">{{ point }}</li>
-          </ul>
-        </dd>
-        <dt>Sources</dt>
-        <dd class="sources">
-          <a *ngFor="let source of idea.sources" [href]="source.url" target="_blank" rel="noopener" [title]="source.title">
-            {{ source.source || source.title }}
-          </a>
-        </dd>
-      </dl>
+    <h3 class="idea-topic">{{ idea.topic }}</h3>
 
-      <div class="write-as">
-        <span>Write it as</span>
-        <div class="format-buttons">
-          <a
-            *ngFor="let format of formats"
-            class="format-button"
-            [class.suggested]="format.value === idea.suggestedFormat"
-            [title]="format.value === idea.suggestedFormat ? 'Suggested format' : ''"
-            routerLink="/compose"
-            [queryParams]="{ idea: batch._id, index: i, type: format.value }"
-          >
-            {{ format.label }}
-          </a>
-        </div>
-      </div>
-    </article>
-  </div>
-</section>
+    <div class="idea-section">
+      <span class="label-caps">Why now</span>
+      <p>{{ idea.whyTrending }}</p>
+    </div>
+    <div class="idea-section">
+      <span class="label-caps">Angle</span>
+      <p>{{ idea.angle }}</p>
+    </div>
+    <div class="idea-section">
+      <span class="label-caps">Key facts</span>
+      <ol class="facts">
+        <li *ngFor="let point of idea.keyPoints; let j = index">
+          <span class="fact-num">{{ j + 1 }}</span><span>{{ point }}</span>
+        </li>
+      </ol>
+    </div>
 
-<section class="scheduled">
-  <h2>Scheduled posts</h2>
-  <p class="placeholder" *ngIf="!scheduledPosts.length">
-    Nothing scheduled. Choose "Schedule" instead of "Post now" in Compose to queue a post.
-  </p>
-  <ul class="scheduled-list" *ngIf="scheduledPosts.length">
-    <li class="card scheduled-item" *ngFor="let post of scheduledPosts">
-      <div class="scheduled-when">
-        <strong>{{ post.scheduledFor | date: 'EEE d MMM, h:mm a' }}</strong>
-        <span *ngIf="post.images.length">
-          {{ post.images.length }} image{{ post.images.length === 1 ? '' : 's' }}
-        </span>
-      </div>
-      <p>{{ excerpt(post.content.text) }}</p>
-      <button type="button" (click)="cancelScheduledPost(post)" [disabled]="cancellingId === post._id">
-        {{ cancellingId === post._id ? 'Cancelling…' : 'Cancel' }}
-      </button>
-    </li>
-  </ul>
-</section>
+    <div class="sources" *ngIf="idea.sources.length">
+      <a *ngFor="let source of idea.sources" [href]="source.url" target="_blank" rel="noopener" [title]="source.title">
+        {{ source.source || source.title }}<span class="icon icon-xs i-arrow-up-right"></span>
+      </a>
+    </div>
+
+    <div class="write-as">
+      <span class="label-caps">Write it as</span>
+      <a
+        *ngFor="let format of formats"
+        class="format-link"
+        [class.suggested]="format.value === idea.suggestedFormat"
+        routerLink="/compose"
+        [queryParams]="{ idea: batch._id, index: i, type: format.value }"
+        [title]="'Open Compose as ' + format.label.toLowerCase() + ', grounded in this idea'"
+      >
+        <span>{{ format.label }}</span>
+        <span class="suggested-note" *ngIf="format.value === idea.suggestedFormat">Suggested</span>
+        <span class="icon icon-sm i-arrow-right" *ngIf="format.value !== idea.suggestedFormat"></span>
+      </a>
+    </div>
+  </article>
+</div>

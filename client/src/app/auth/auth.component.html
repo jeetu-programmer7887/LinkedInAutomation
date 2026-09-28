@@ -1,12 +1,24 @@
-<h1>Sign in</h1>
+<header class="page-head">
+  <div class="page-head-text">
+    <span class="kicker"><b>—</b> Account</span>
+    <h1 class="page-title">Sign in</h1>
+    <p class="page-sub" *ngIf="!authService.currentUser">
+      Connect your LinkedIn account to research, write, and publish posts directly from here.
+    </p>
+    <p class="page-sub" *ngIf="authService.currentUser">You're already signed in as {{ authService.currentUser.name }}.</p>
+  </div>
+</header>
 
-<p class="placeholder" *ngIf="!authService.currentUser">
-  Connect your LinkedIn account to research, write, and publish posts directly from here.
-</p>
-<p class="placeholder" *ngIf="authService.currentUser">You're already signed in as {{ authService.currentUser.name }}.</p>
+<div class="auth-body">
+  <p *ngIf="error" class="error-bar" role="alert"><span class="icon i-circle-alert"></span>Sign-in failed: {{ error }}</p>
 
-<p *ngIf="error" class="error">Sign-in failed: {{ error }}</p>
-
-<button type="button" class="primary" *ngIf="!authService.currentUser" (click)="authService.login()">
-  Continue with LinkedIn
-</button>
+  <button
+    type="button"
+    class="primary btn-wide btn-lg"
+    *ngIf="!authService.currentUser"
+    (click)="authService.login()"
+    title="You'll be sent to LinkedIn to approve access"
+  >
+    Continue with LinkedIn <span class="icon i-log-in"></span>
+  </button>
+</div>

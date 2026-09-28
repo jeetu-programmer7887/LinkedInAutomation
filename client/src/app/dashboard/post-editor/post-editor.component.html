@@ -1,62 +1,85 @@
-<form class="editor" (ngSubmit)="save()">
-  <p class="failure" *ngIf="isFailed && post.failureReason">
-    <strong>Why it failed:</strong> {{ post.failureReason }}
-  </p>
+<div class="backdrop" (click)="saving || closed.emit()" aria-hidden="true"></div>
 
-  <label>
-    <span>Caption</span>
-    <textarea rows="7" name="caption" [(ngModel)]="caption"></textarea>
-  </label>
+<aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="post-editor-title">
+  <form class="editor" (ngSubmit)="save()">
+    <header class="drawer-head">
+      <div class="drawer-title">
+        <span class="drawer-kicker">{{ isFailed ? 'Fix failed post' : 'Edit scheduled post' }}</span>
+        <h2 id="post-editor-title">{{ isFailed ? 'Fix & reschedule' : 'Edit post' }}</h2>
+      </div>
+      <button type="button" class="btn-icon" (click)="closed.emit()" [disabled]="saving" title="Close (Esc)">
+        <span class="visually-hidden">Close</span>
+        <span class="icon icon-sm i-x"></span>
+      </button>
+    </header>
 
-  <div class="images">
-    <span class="images-title">Images ({{ slots.length }}/{{ maxImages }})</span>
-    <div class="image-list">
-      <div class="image-slot" *ngFor="let slot of slots; let i = index">
-        <img [src]="imageUrl(slot)" [alt]="'Image ' + (i + 1)" />
-        <div class="image-actions">
-          <label class="file-button">
-            <input type="file" accept="image/jpeg,image/png,image/webp" (change)="replaceImage($event, i)" />
-            Re-upload
+    <p class="failure" *ngIf="isFailed && post.failureReason">
+      <strong>Why it failed:</strong> {{ post.failureReason }}
+    </p>
+
+    <div class="drawer-body">
+      <label class="field">
+        <span class="field-label field-row">
+          <span>Caption</span>
+          <span [class.over]="caption.length > captionLimit">{{ caption.length | number }} / {{ captionLimit | number }}</span>
+        </span>
+        <textarea rows="9" name="caption" [(ngModel)]="caption"></textarea>
+      </label>
+
+      <div class="field">
+        <span class="field-label">Images ({{ slots.length }}/{{ maxImages }})</span>
+        <div class="image-list">
+          <div class="image-slot" *ngFor="let slot of slots; let i = index">
+            <div class="image-frame">
+              <img [src]="imageUrl(slot)" [alt]="'Image ' + (i + 1)" />
+              <span class="image-num">{{ i + 1 }}</span>
+            </div>
+            <div class="image-actions">
+              <label class="file-button" title="Swap this image for another file">
+                <input type="file" accept="image/jpeg,image/png,image/webp" (change)="replaceImage($event, i)" />
+                Replace
+              </label>
+              <button type="button" class="remove" (click)="removeImage(i)" title="Remove this image">Remove</button>
+            </div>
+          </div>
+
+          <label class="image-add" *ngIf="slots.length < maxImages" title="Choose a JPEG, PNG or WEBP file">
+            <input type="file" accept="image/jpeg,image/png,image/webp" (change)="addImage($event)" />
+            <span class="icon i-image-plus"></span>
+            Add image
           </label>
-          <button type="button" (click)="removeImage(i)">Remove</button>
         </div>
+        <p class="hint" *ngIf="!slots.length">No images — this goes out as a text post.</p>
       </div>
 
-      <label class="image-add" *ngIf="slots.length < maxImages">
-        <input type="file" accept="image/jpeg,image/png,image/webp" (change)="addImage($event)" />
-        + Add image
-      </label>
+      <div class="field">
+        <span class="field-label">Then</span>
+        <div class="seg seg-full" role="group" aria-label="When to publish">
+          <button type="button" [class.active]="mode === 'schedule'" [attr.aria-pressed]="mode === 'schedule'" (click)="mode = 'schedule'">
+            <span class="icon icon-sm i-calendar-clock"></span> {{ isFailed ? 'Reschedule' : 'Keep scheduled' }}
+          </button>
+          <button type="button" [class.active]="mode === 'now'" [attr.aria-pressed]="mode === 'now'" (click)="mode = 'now'">
+            <span class="icon icon-sm i-send"></span> Post now
+          </button>
+        </div>
+        <input
+          *ngIf="mode === 'schedule'"
+          type="datetime-local"
+          name="scheduledFor"
+          aria-label="Publish date and time"
+          [(ngModel)]="scheduledFor"
+          [min]="minScheduleTime"
+        />
+      </div>
+
+      <p class="error" *ngIf="error" role="alert">{{ error }}</p>
     </div>
-    <p class="hint" *ngIf="!slots.length">No images - this will go out as a text post.</p>
-  </div>
 
-  <fieldset class="when">
-    <legend>Then</legend>
-    <label class="radio">
-      <input type="radio" name="mode" value="schedule" [(ngModel)]="mode" />
-      {{ isFailed ? 'Reschedule' : 'Keep scheduled' }}
-    </label>
-    <input
-      *ngIf="mode === 'schedule'"
-      type="datetime-local"
-      name="scheduledFor"
-      aria-label="Publish date and time"
-      [(ngModel)]="scheduledFor"
-      [min]="minScheduleTime"
-    />
-    <label class="radio">
-      <input type="radio" name="mode" value="now" [(ngModel)]="mode" />
-      Post now
-    </label>
-  </fieldset>
-
-  <p class="error" *ngIf="error">{{ error }}</p>
-
-  <div class="editor-actions">
-    <button type="submit" class="primary" [disabled]="saving">
-      <ng-container *ngIf="mode === 'schedule'">{{ saving ? 'Saving…' : isFailed ? 'Save & reschedule' : 'Save changes' }}</ng-container>
-      <ng-container *ngIf="mode === 'now'">{{ saving ? 'Posting…' : 'Save & post now' }}</ng-container>
-    </button>
-    <button type="button" (click)="closed.emit()" [disabled]="saving">Close</button>
-  </div>
-</form>
+    <footer class="drawer-foot">
+      <button type="submit" class="primary save" [disabled]="saving">
+        {{ saveLabel }} <span class="icon icon-sm i-arrow-right"></span>
+      </button>
+      <button type="button" class="close" (click)="closed.emit()" [disabled]="saving">Close</button>
+    </footer>
+  </form>
+</aside>

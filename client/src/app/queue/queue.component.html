@@ -1,0 +1,66 @@
+<header class="page-head">
+  <div class="page-head-text">
+    <span class="kicker"><b>03</b> — Scheduled</span>
+    <h1 class="page-title">Queue</h1>
+    <p class="page-sub" *ngIf="posts.length">
+      {{ posts.length }} post{{ posts.length === 1 ? '' : 's' }} scheduled · next
+      {{ posts[0].scheduledFor | date: 'EEE d MMM, h:mm a' }}
+    </p>
+    <p class="page-sub" *ngIf="!posts.length && !loading">Nothing queued.</p>
+  </div>
+  <a class="btn btn-wide btn-lg" routerLink="/compose" title="Write a new post">
+    New post <span class="icon i-plus"></span>
+  </a>
+</header>
+
+<p class="error-bar" *ngIf="error" role="alert"><span class="icon i-circle-alert"></span>{{ error }}</p>
+
+<p class="placeholder" *ngIf="loading && !posts.length">Loading the queue…</p>
+
+<p class="placeholder" *ngIf="!loading && !posts.length">
+  Nothing scheduled. Choose <strong>Schedule</strong> instead of <strong>Post now</strong> in Compose to queue a post.
+</p>
+
+<section class="day" *ngFor="let group of groups">
+  <div class="day-label">
+    <span class="day-rel">{{ group.relative }}</span>
+    <span class="day-date">{{ group.date | date: 'EEE d MMM' }}</span>
+  </div>
+
+  <ul class="day-posts">
+    <li class="item" *ngFor="let post of group.posts">
+      <span class="item-time">{{ post.scheduledFor | date: 'h:mm a' }}</span>
+
+      <div class="item-body">
+        <div class="item-tags">
+          <span class="tag">{{ post.postType ? typeLabels[post.postType] : 'Post' }}</span>
+          <span class="tag" *ngIf="post.images.length">
+            {{ post.images.length }} image{{ post.images.length === 1 ? '' : 's' }}
+          </span>
+          <span class="tag tag-soft" *ngIf="post.source === 'idea'" [title]="post.ideaTopic || ''">From idea</span>
+        </div>
+        <p class="item-text">{{ excerpt(post.content.text) }}</p>
+      </div>
+
+      <div class="item-actions">
+        <button type="button" class="btn-sm" (click)="editingPost = post" title="Change the caption, images or time">Edit</button>
+        <button
+          type="button"
+          class="btn-ghost danger btn-sm"
+          (click)="cancel(post)"
+          [disabled]="cancellingId === post._id"
+          title="Cancel - it will not be published"
+        >
+          {{ cancellingId === post._id ? 'Cancelling…' : 'Cancel' }}
+        </button>
+      </div>
+    </li>
+  </ul>
+</section>
+
+<app-post-editor
+  *ngIf="editingPost"
+  [post]="editingPost"
+  (saved)="onSaved()"
+  (closed)="editingPost = null"
+></app-post-editor>
