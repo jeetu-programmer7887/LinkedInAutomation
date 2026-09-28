@@ -1,26 +1,16 @@
 import 'dotenv/config';
 
 export const port = process.env.PORT || 3000;
-// Vercel sets VERCEL=1 at build and run time; it is unset locally.
-export const onVercel = Boolean(process.env.VERCEL);
-
-const LOCAL_CLIENT_URL = 'http://localhost:4200';
-
 // Frontend origins allowed by CORS. CLIENT_URL (e.g. https://lin-automation.vercel.app)
 // may list several, comma-separated. Trailing slashes are stripped: CORS
-// compares origins exactly, and redirects append paths. Run locally, the
-// Angular dev server is always allowed too, so one .env works in both places.
-const configuredClientUrls = (process.env.CLIENT_URL || '')
+// compares origins exactly, and redirects append paths.
+// For local development: CLIENT_URL=http://localhost:4200
+export const allowedClientUrls = (process.env.CLIENT_URL || 'http://localhost:4200')
   .split(',')
   .map((url) => url.trim().replace(/\/+$/, ''))
   .filter(Boolean);
-export const allowedClientUrls = [
-  ...new Set([...(onVercel ? [] : [LOCAL_CLIENT_URL]), ...configuredClientUrls]),
-];
-if (!allowedClientUrls.length) allowedClientUrls.push(LOCAL_CLIENT_URL);
 
-// Where OAuth redirects send the browser back: the local dev server when run
-// locally, CLIENT_URL on Vercel.
+// Where OAuth redirects send the browser back: the first CLIENT_URL.
 export const clientUrl = allowedClientUrls[0];
 
 // Deployed over https, client and server sit on different sites (separate
