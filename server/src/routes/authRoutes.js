@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import * as linkedinService from '../services/linkedinService.js';
 import User from '../models/User.js';
 import { encrypt } from '../utils/crypto.js';
-import { jwtSecret, clientUrl } from '../config/env.js';
+import { jwtSecret, clientUrl, crossSiteCookies } from '../config/env.js';
 import { requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -53,7 +53,8 @@ router.get('/linkedin/callback', async (req, res) => {
   const sessionToken = jwt.sign({ userId: user._id.toString() }, jwtSecret, { expiresIn: '30d' });
   res.cookie('session', sessionToken, {
     httpOnly: true,
-    sameSite: 'lax',
+    sameSite: crossSiteCookies ? 'none' : 'lax',
+    secure: crossSiteCookies,
     maxAge: 30 * 24 * 60 * 60 * 1000,
   });
 

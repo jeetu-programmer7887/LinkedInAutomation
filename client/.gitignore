@@ -40,3 +40,9 @@ testem.log
 # System files
 .DS_Store
 Thumbs.db
+
+# Generated from API_URL by scripts/set-env.js
+/src/app/core/config/env.generated.ts
+
+# Local environment
+.env

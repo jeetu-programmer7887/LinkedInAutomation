@@ -4,7 +4,8 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
-import { clientUrl } from './config/env.js';
+import { allowedClientUrls } from './config/env.js';
+import { connectDb } from './config/db.js';
 
 import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
@@ -17,7 +18,7 @@ import dashboardRoutes from './routes/dashboardRoutes.js';
 const app = express();
 
 app.use(helmet());
-app.use(cors({ origin: clientUrl, credentials: true }));
+app.use(cors({ origin: allowedClientUrls, credentials: true }));
 app.use(morgan('dev'));
 app.use(express.json());
 app.use(cookieParser());
@@ -27,6 +28,13 @@ app.get('/', (req, res) => {
 })
 
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+
+// Every API route needs MongoDB. A no-op once connected; on Vercel this is
+// what opens the connection, since server.js never runs there.
+app.use('/api', async (_req, _res, next) => {
+  await connectDb();
+  next();
+});
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);

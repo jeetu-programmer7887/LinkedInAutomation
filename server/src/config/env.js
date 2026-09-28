@@ -1,7 +1,32 @@
 import 'dotenv/config';
 
 export const port = process.env.PORT || 3000;
-export const clientUrl = process.env.CLIENT_URL || 'http://localhost:4200';
+// Vercel sets VERCEL=1 at build and run time; it is unset locally.
+export const onVercel = Boolean(process.env.VERCEL);
+
+const LOCAL_CLIENT_URL = 'http://localhost:4200';
+
+// Frontend origins allowed by CORS. CLIENT_URL (e.g. https://lin-automation.vercel.app)
+// may list several, comma-separated. Trailing slashes are stripped: CORS
+// compares origins exactly, and redirects append paths. Run locally, the
+// Angular dev server is always allowed too, so one .env works in both places.
+const configuredClientUrls = (process.env.CLIENT_URL || '')
+  .split(',')
+  .map((url) => url.trim().replace(/\/+$/, ''))
+  .filter(Boolean);
+export const allowedClientUrls = [
+  ...new Set([...(onVercel ? [] : [LOCAL_CLIENT_URL]), ...configuredClientUrls]),
+];
+if (!allowedClientUrls.length) allowedClientUrls.push(LOCAL_CLIENT_URL);
+
+// Where OAuth redirects send the browser back: the local dev server when run
+// locally, CLIENT_URL on Vercel.
+export const clientUrl = allowedClientUrls[0];
+
+// Deployed over https, client and server sit on different sites (separate
+// *.vercel.app subdomains count as different sites), so the session cookie
+// must be SameSite=None; Secure for the browser to send it with API calls.
+export const crossSiteCookies = clientUrl.startsWith('https://');
 export const mongoUri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/linkedin-automation';
 
 export const jwtSecret = process.env.JWT_SECRET || 'dev-only-change-me';
