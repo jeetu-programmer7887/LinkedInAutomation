@@ -1,49 +1,75 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, catchError, of, tap } from 'rxjs';
-import { User } from '../models/user.model';
+import { BehaviorSubject, Observable, catchError, finalize, map, of, shareReplay, tap } from 'rxjs';
 import { API_BASE_URL } from '../config/api-config';
-import { ThemeService } from './theme.service';
 
+interface SessionResponse {
+  authenticated: boolean;
+  username?: string;
+}
+
+// Username/password login for the whole app. The session itself is an
+// httpOnly cookie (7 days) set by POST /api/auth/login, so this service
+// never sees a token - it only tracks whether the server says we're in.
 @Injectable({
   providedIn: 'root',
 })
 export class AuthService {
-  private readonly currentUserSubject = new BehaviorSubject<User | null>(null);
-  readonly currentUser$ = this.currentUserSubject.asObservable();
+  /** null until the first session check answers. */
+  private readonly authenticatedSubject = new BehaviorSubject<boolean | null>(null);
+  readonly authenticated$ = this.authenticatedSubject.asObservable();
 
-  private readonly checkedSubject = new BehaviorSubject<boolean>(false);
-  readonly checked$ = this.checkedSubject.asObservable();
+  private username: string | null = null;
+  private pendingCheck: Observable<boolean> | null = null;
 
-  constructor(private readonly http: HttpClient, private readonly themeService: ThemeService) {}
+  constructor(private readonly http: HttpClient) {}
 
-  get currentUser(): User | null {
-    return this.currentUserSubject.value;
+  get currentUsername(): string | null {
+    return this.username;
   }
 
-  /** Full-page redirect - OAuth has to leave the SPA to hit LinkedIn's consent screen. */
-  login(): void {
-    window.location.href = `${API_BASE_URL}/auth/linkedin`;
+  /** Answers from memory once known; otherwise asks the server once. */
+  checkSession(): Observable<boolean> {
+    const known = this.authenticatedSubject.value;
+    if (known !== null) {
+      return of(known);
+    }
+    if (!this.pendingCheck) {
+      this.pendingCheck = this.http.get<SessionResponse>(`${API_BASE_URL}/auth/session`).pipe(
+        map((res) => this.setSession(res)),
+        catchError(() => of(this.setSession({ authenticated: false }))),
+        finalize(() => (this.pendingCheck = null)),
+        shareReplay(1)
+      );
+    }
+    return this.pendingCheck;
   }
 
-  logout(): void {
-    this.http.post(`${API_BASE_URL}/auth/logout`, {}).subscribe(() => {
-      this.currentUserSubject.next(null);
-    });
+  login(username: string, password: string): Observable<void> {
+    return this.http
+      .post<SessionResponse>(`${API_BASE_URL}/auth/login`, { username, password })
+      .pipe(
+        tap((res) => this.setSession(res)),
+        map(() => undefined)
+      );
   }
 
-  /** Called once on app start to see if the session cookie is still valid. */
-  refreshCurrentUser() {
-    return this.http.get<User>(`${API_BASE_URL}/users/me`).pipe(
-      tap((user) => {
-        this.currentUserSubject.next(user);
-        this.themeService.hydrateFromServer(user.theme);
-      }),
-      catchError(() => {
-        this.currentUserSubject.next(null);
-        return of(null);
-      }),
-      tap(() => this.checkedSubject.next(true))
+  logout(): Observable<void> {
+    return this.http.post<void>(`${API_BASE_URL}/auth/logout`, {}).pipe(
+      // Log out locally even if the server call fails.
+      catchError(() => of(undefined)),
+      tap(() => this.markLoggedOut())
     );
+  }
+
+  /** The server rejected our cookie (expired or cleared elsewhere). */
+  markLoggedOut(): void {
+    this.setSession({ authenticated: false });
+  }
+
+  private setSession(res: SessionResponse): boolean {
+    this.username = res.authenticated ? res.username ?? null : null;
+    this.authenticatedSubject.next(res.authenticated);
+    return res.authenticated;
   }
 }

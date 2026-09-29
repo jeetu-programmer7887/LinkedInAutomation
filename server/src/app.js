@@ -14,8 +14,13 @@ import ideaRoutes from './routes/ideaRoutes.js';
 import cronRoutes from './routes/cronRoutes.js';
 import settingsRoutes from './routes/settingsRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
+import { requireLogin } from './middleware/auth.js';
 
 const app = express();
+
+// Behind Vercel's (or any) proxy: take the client IP from X-Forwarded-For,
+// so the login rate limit counts per visitor rather than per proxy.
+app.set('trust proxy', 1);
 
 app.use(helmet());
 app.use(cors({ origin: allowedClientUrls, credentials: true }));
@@ -36,13 +41,17 @@ app.use('/api', async (_req, _res, next) => {
   next();
 });
 
+// Open: login/session/logout (the LinkedIn OAuth routes inside gate
+// themselves), and cron, which has its own secret.
 app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/posts', postRoutes);
-app.use('/api/ideas', ideaRoutes);
 app.use('/api/cron', cronRoutes);
-app.use('/api/settings', settingsRoutes);
-app.use('/api/dashboard', dashboardRoutes);
+
+// Everything else needs the username/password login (7-day cookie).
+app.use('/api/users', requireLogin, userRoutes);
+app.use('/api/posts', requireLogin, postRoutes);
+app.use('/api/ideas', requireLogin, ideaRoutes);
+app.use('/api/settings', requireLogin, settingsRoutes);
+app.use('/api/dashboard', requireLogin, dashboardRoutes);
 
 // Central error handler - express-async-errors forwards thrown/rejected
 // errors from the async route handlers above here instead of crashing.

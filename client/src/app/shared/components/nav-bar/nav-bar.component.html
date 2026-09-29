@@ -59,6 +59,12 @@
       </span>
       <span>Theme · <strong>{{ themeName }}</strong></span>
     </a>
+
+    <button type="button" class="logout" (click)="logout()" [disabled]="loggingOut" title="Log out of this browser">
+      <span class="icon icon-sm i-log-out"></span>
+      <span class="logout-label">{{ loggingOut ? 'Logging out…' : 'Log out' }}</span>
+      <span class="logout-user" *ngIf="username">{{ username }}</span>
+    </button>
   </div>
 </header>
 

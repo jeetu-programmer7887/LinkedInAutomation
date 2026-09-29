@@ -1,24 +1,53 @@
-<header class="page-head">
-  <div class="page-head-text">
-    <span class="kicker"><b>—</b> Account</span>
-    <h1 class="page-title">Sign in</h1>
-    <p class="page-sub" *ngIf="!authService.currentUser">
-      Connect your LinkedIn account to research, write, and publish posts directly from here.
+<div class="login">
+  <form class="login-card" (ngSubmit)="submit()" novalidate>
+    <img class="login-logo" src="assets/logo.png" alt="" width="64" height="64" />
+    <span class="login-kicker">Studio</span>
+    <h1 class="login-title">LinkedIn Automation</h1>
+    <p class="login-sub">Log in to continue. You'll stay signed in on this browser for 7 days.</p>
+
+    <p *ngIf="error" class="login-error" role="alert">
+      <span class="icon icon-sm i-circle-alert"></span>
+      <span>{{ error }}</span>
     </p>
-    <p class="page-sub" *ngIf="authService.currentUser">You're already signed in as {{ authService.currentUser.name }}.</p>
-  </div>
-</header>
 
-<div class="auth-body">
-  <p *ngIf="error" class="error-bar" role="alert"><span class="icon i-circle-alert"></span>Sign-in failed: {{ error }}</p>
+    <label class="login-field">
+      <span class="login-label">Username</span>
+      <input
+        type="text"
+        name="username"
+        [(ngModel)]="username"
+        autocomplete="username"
+        autocapitalize="off"
+        spellcheck="false"
+        required
+        autofocus
+      />
+    </label>
 
-  <button
-    type="button"
-    class="primary btn-wide btn-lg"
-    *ngIf="!authService.currentUser"
-    (click)="authService.login()"
-    title="You'll be sent to LinkedIn to approve access"
-  >
-    Continue with LinkedIn <span class="icon i-log-in"></span>
-  </button>
+    <label class="login-field">
+      <span class="login-label">Password</span>
+      <span class="password-wrap">
+        <input
+          [type]="showPassword ? 'text' : 'password'"
+          name="password"
+          [(ngModel)]="password"
+          autocomplete="current-password"
+          required
+        />
+        <button
+          type="button"
+          class="reveal"
+          (click)="showPassword = !showPassword"
+          [attr.aria-pressed]="showPassword"
+          [title]="showPassword ? 'Hide password' : 'Show password'"
+        >
+          {{ showPassword ? 'Hide' : 'Show' }}
+        </button>
+      </span>
+    </label>
+
+    <button type="submit" class="primary btn-block btn-lg login-submit" [disabled]="submitting">
+      {{ submitting ? 'Logging in…' : 'Log in... :&#41;' }}
+    </button>
+  </form>
 </div>

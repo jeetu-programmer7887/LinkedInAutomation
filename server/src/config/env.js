@@ -20,6 +20,15 @@ export const crossSiteCookies = clientUrl.startsWith('https://');
 export const mongoUri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/linkedin-automation';
 
 export const jwtSecret = process.env.JWT_SECRET || 'dev-only-change-me';
+
+// The one username/password that unlocks the app (POST /api/auth/login).
+// Prefixed APP_ because Windows already sets USERNAME in every shell, and
+// dotenv never overrides a variable that is already set. Left unset,
+// login is refused rather than left open.
+export const appLogin = {
+  username: process.env.APP_USERNAME,
+  password: process.env.APP_PASSWORD,
+};
 export const tokenEncryptionKey = process.env.TOKEN_ENCRYPTION_KEY || 'dev-only-32-char-change-me!!';
 
 export const linkedin = {

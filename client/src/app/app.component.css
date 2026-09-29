@@ -14,4 +14,7 @@
     display: grid;
     grid-template-columns: var(--nav-w) minmax(0, 1fr);
   }
+  /* Logged out: no rail, the login page gets the full width. */
+  .shell.shell-bare { display: block; }
 }
+.shell-bare .main { padding-bottom: 0; }

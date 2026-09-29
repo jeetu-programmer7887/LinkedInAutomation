@@ -4,6 +4,7 @@ import { Subscription, filter } from 'rxjs';
 import { PostService } from '../../../core/services/post.service';
 import { DashboardService } from '../../../core/services/dashboard.service';
 import { ThemeService } from '../../../core/services/theme.service';
+import { AuthService } from '../../../core/services/auth.service';
 import { Post } from '../../../core/models/post.model';
 import { excerpt } from '../../../core/models/post-labels';
 
@@ -45,8 +46,24 @@ export class NavBarComponent implements OnInit, OnDestroy {
     private readonly router: Router,
     private readonly postService: PostService,
     private readonly dashboardService: DashboardService,
-    private readonly themeService: ThemeService
+    private readonly themeService: ThemeService,
+    private readonly authService: AuthService
   ) {}
+
+  loggingOut = false;
+
+  get username(): string | null {
+    return this.authService.currentUsername;
+  }
+
+  logout(): void {
+    if (this.loggingOut) return;
+    this.loggingOut = true;
+    this.authService.logout().subscribe(() => {
+      this.loggingOut = false;
+      this.router.navigate(['/login']);
+    });
+  }
 
   ngOnInit(): void {
     this.refresh();

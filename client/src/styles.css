@@ -327,6 +327,7 @@ input[type='color'] {
 .i-layout-dashboard { --i: url('https://unpkg.com/lucide-static@0.469.0/icons/layout-dashboard.svg'); }
 .i-lightbulb { --i: url('https://unpkg.com/lucide-static@0.469.0/icons/lightbulb.svg'); }
 .i-log-in { --i: url('https://unpkg.com/lucide-static@0.469.0/icons/log-in.svg'); }
+.i-log-out { --i: url('https://unpkg.com/lucide-static@0.469.0/icons/log-out.svg'); }
 .i-menu { --i: url('https://unpkg.com/lucide-static@0.469.0/icons/menu.svg'); }
 .i-pen-line { --i: url('https://unpkg.com/lucide-static@0.469.0/icons/pen-line.svg'); }
 .i-plus { --i: url('https://unpkg.com/lucide-static@0.469.0/icons/plus.svg'); }

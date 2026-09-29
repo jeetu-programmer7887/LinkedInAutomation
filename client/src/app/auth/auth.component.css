@@ -1,8 +1,114 @@
-.auth-body {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-3);
+/* Full-screen, centered card - there's no nav rail while logged out. */
+.login {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  min-height: 100dvh;
   padding: var(--space-5) var(--gutter);
 }
-.auth-body .error-bar { width: 100%; }
+
+.login-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 400px;
+  padding: 32px 28px;
+  border: 2px solid var(--color-divider);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-bg);
+  box-shadow: var(--shadow-lg);
+}
+@media (max-width: 479px) {
+  .login-card { padding: 28px 20px; border-width: 1px; }
+}
+
+.login-logo {
+  align-self: center;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 18px;
+  border-radius: 50%;
+}
+
+.login-kicker {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.login-title {
+  margin: 4px 0 8px;
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+}
+
+.login-sub {
+  margin: 0 0 22px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--color-muted);
+}
+
+.login-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  line-height: 1.45;
+  background-color: color-mix(in srgb, var(--color-danger) 10%, var(--color-bg));
+  color: var(--color-danger);
+}
+.login-error .icon { flex: none; margin-top: 2px; }
+
+.login-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.login-label { font-size: 13px; font-weight: 600; }
+
+.login-field input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 16px; /* 16px stops iOS zooming into the field */
+}
+.login-field input:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+  border-color: var(--color-accent);
+}
+
+.password-wrap { position: relative; display: block; }
+.password-wrap input { padding-right: 68px; }
+
+.reveal {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  min-height: 32px;
+  padding: 4px 10px;
+  border: 0;
+  background: none;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+.reveal:hover { background: var(--color-tint); color: var(--color-text); }
+
+.login-submit { margin-top: 8px; justify-content: center; gap: 8px; }

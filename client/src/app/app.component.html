@@ -1,5 +1,5 @@
-<div class="shell">
-  <app-nav-bar></app-nav-bar>
+<div class="shell" [class.shell-bare]="(authenticated$ | async) !== true">
+  <app-nav-bar *ngIf="(authenticated$ | async) === true"></app-nav-bar>
 
   <main class="main">
     <router-outlet></router-outlet>
