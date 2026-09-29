@@ -1,0 +1,25 @@
+<!-- Buttons already say what's happening ("Posting…"), so "sm" stays silent. -->
+<span
+  class="loader"
+  [attr.role]="size === 'sm' ? null : 'status'"
+  [attr.aria-hidden]="size === 'sm' ? 'true' : null"
+  [attr.aria-label]="size === 'sm' ? null : label || 'Loading'"
+>
+  <svg class="mark" viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+    <circle class="track" cx="50" cy="50" r="44" />
+    <!-- pathLength 100: two 38-long arcs with 12-long gaps, like the logo's ring -->
+    <circle class="ring" cx="50" cy="50" r="44" pathLength="100" />
+
+    <ng-container *ngIf="size !== 'sm'">
+      <!-- pathLength 1 lets one dash length fit both letters -->
+      <path class="letter j" pathLength="1" d="M44 26 V58 Q44 70 33 70 Q24 70 22 62" />
+      <path class="letter p" pathLength="1" d="M55 78 V38 H63 Q75 38 75 49 Q75 60 63 60 H55" />
+
+      <rect class="pixel px1" x="80" y="66" width="5" height="5" rx="1" />
+      <rect class="pixel px2" x="86" y="58" width="4" height="4" rx="1" />
+      <rect class="pixel px3" x="76" y="76" width="4" height="4" rx="1" />
+    </ng-container>
+  </svg>
+
+  <span class="loader-label" *ngIf="label && size !== 'sm'">{{ label }}</span>
+</span>

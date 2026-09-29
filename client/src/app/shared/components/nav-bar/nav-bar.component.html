@@ -61,7 +61,8 @@
     </a>
 
     <button type="button" class="logout" (click)="logout()" [disabled]="loggingOut" title="Log out of this browser">
-      <span class="icon icon-sm i-log-out"></span>
+      <app-loader *ngIf="loggingOut" size="sm"></app-loader>
+      <span class="icon icon-sm i-log-out" *ngIf="!loggingOut"></span>
       <span class="logout-label">{{ loggingOut ? 'Logging out…' : 'Log out' }}</span>
       <span class="logout-user" *ngIf="username">{{ username }}</span>
     </button>

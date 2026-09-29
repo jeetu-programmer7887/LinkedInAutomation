@@ -15,7 +15,7 @@
 
 <p class="error-bar" *ngIf="error" role="alert"><span class="icon i-circle-alert"></span>{{ error }}</p>
 
-<p class="placeholder" *ngIf="loading && !posts.length">Loading the queue…</p>
+<app-loader *ngIf="loading && !posts.length" size="lg" label="Loading the queue…" block></app-loader>
 
 <p class="placeholder" *ngIf="!loading && !posts.length">
   Nothing scheduled. Choose <strong>Schedule</strong> instead of <strong>Post now</strong> in Compose to queue a post.
@@ -51,6 +51,7 @@
           [disabled]="cancellingId === post._id"
           title="Cancel - it will not be published"
         >
+          <app-loader *ngIf="cancellingId === post._id" size="sm"></app-loader>
           {{ cancellingId === post._id ? 'Cancelling…' : 'Cancel' }}
         </button>
       </div>

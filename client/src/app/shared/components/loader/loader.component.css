@@ -1,0 +1,85 @@
+:host { display: inline-flex; vertical-align: middle; }
+
+:host(.block) {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  padding: 56px var(--gutter);
+}
+
+.loader {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.mark { display: block; overflow: visible; }
+:host(.loader-sm) .mark { width: 1.15em; height: 1.15em; }
+:host(.loader-md) .mark { width: 56px; height: 56px; }
+:host(.loader-lg) .mark { width: 96px; height: 96px; }
+
+.loader-label {
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: center;
+  color: var(--color-muted);
+}
+:host(.loader-lg) .loader-label { font-size: 14px; }
+
+/* ── Ring ─────────────────────────────────────────────────────────── */
+.track,
+.ring { fill: none; }
+.track { stroke: var(--color-hair); stroke-width: 5; }
+.ring {
+  stroke: var(--color-accent);
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-dasharray: 38 12;
+  transform-box: view-box;
+  transform-origin: 50% 50%;
+  animation: loader-spin 1.6s linear infinite;
+}
+/* In a button: ring only, in the button's text color, thicker to read small. */
+:host(.loader-sm) .track { stroke: currentColor; stroke-width: 11; opacity: 0.25; }
+:host(.loader-sm) .ring { stroke: currentColor; stroke-width: 11; animation-duration: 0.9s; }
+
+/* ── J and P write in, hold, then erase ───────────────────────────── */
+.letter {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: loader-write 2.4s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+.letter.p { animation-delay: 0.3s; }
+
+/* ── Pixel squares blink in turn ──────────────────────────────────── */
+.pixel {
+  fill: var(--color-accent);
+  opacity: 0.2;
+  animation: loader-blink 1.2s ease-in-out infinite;
+}
+.px2 { animation-delay: 0.2s; }
+.px3 { animation-delay: 0.4s; }
+
+@keyframes loader-spin { to { transform: rotate(360deg); } }
+@keyframes loader-write {
+  0% { stroke-dashoffset: 1; }
+  45%, 70% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: -1; }
+}
+@keyframes loader-blink {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 1; }
+}
+
+/* Reduced motion: the letters stay drawn and the ring turns slowly. */
+@media (prefers-reduced-motion: reduce) {
+  .ring { animation-duration: 4s; }
+  .letter { animation: none; stroke-dashoffset: 0; }
+  .pixel { animation: none; opacity: 0.6; }
+}

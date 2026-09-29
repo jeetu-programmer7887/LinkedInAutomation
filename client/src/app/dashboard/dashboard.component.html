@@ -9,7 +9,7 @@
 </header>
 
 <p class="error-bar" *ngIf="error" role="alert"><span class="icon i-circle-alert"></span>{{ error }}</p>
-<p class="placeholder" *ngIf="loading && !summary">Loading…</p>
+<app-loader *ngIf="loading && !summary" size="lg" label="Loading your dashboard…" block></app-loader>
 
 <ng-container *ngIf="summary">
   <section class="ruled-grid tiles" aria-label="Post totals">
@@ -121,6 +121,7 @@
               [disabled]="cancellingId === post._id"
               title="Cancel - it will not be published"
             >
+              <app-loader *ngIf="cancellingId === post._id" size="sm"></app-loader>
               {{ cancellingId === post._id ? 'Cancelling…' : 'Cancel' }}
             </button>
           </div>

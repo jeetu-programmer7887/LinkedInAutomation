@@ -47,6 +47,7 @@
     </label>
 
     <button type="submit" class="primary btn-block btn-lg login-submit" [disabled]="submitting">
+      <app-loader *ngIf="submitting" size="sm"></app-loader>
       {{ submitting ? 'Logging in…' : 'Log in... :&#41;' }}
     </button>
   </form>

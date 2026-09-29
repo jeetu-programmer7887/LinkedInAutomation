@@ -2,6 +2,10 @@
   <app-nav-bar *ngIf="(authenticated$ | async) === true"></app-nav-bar>
 
   <main class="main">
+    <!-- First visit (checking the login) and slow page changes. -->
+    <div class="route-loading" *ngIf="navigating$ | async">
+      <app-loader size="lg" label="Loading…"></app-loader>
+    </div>
     <router-outlet></router-outlet>
   </main>
 </div>

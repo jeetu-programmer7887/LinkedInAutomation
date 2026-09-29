@@ -128,7 +128,17 @@
   font-size: 15px;
   transition: opacity var(--ease), border-color var(--ease);
 }
-.caption-input.dim { opacity: 0.5; }
+.caption-input.dim { opacity: 0.35; }
+
+/* While generating: the loader sits over the (dimmed) caption box. */
+.caption-wrap { position: relative; }
+.caption-loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
 
 /* ── 04 Media ───────────────────────────────────────────────────────── */
 .media-note { margin: 0; font-size: 14px; max-width: 48ch; }

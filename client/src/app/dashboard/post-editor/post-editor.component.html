@@ -77,7 +77,8 @@
 
     <footer class="drawer-foot">
       <button type="submit" class="primary save" [disabled]="saving">
-        {{ saveLabel }} <span class="icon icon-sm i-arrow-right"></span>
+        <app-loader *ngIf="saving" size="sm"></app-loader>
+        {{ saveLabel }} <span class="icon icon-sm i-arrow-right" *ngIf="!saving"></span>
       </button>
       <button type="button" class="close" (click)="closed.emit()" [disabled]="saving">Close</button>
     </footer>

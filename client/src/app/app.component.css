@@ -5,8 +5,22 @@
 }
 
 .main {
+  position: relative;
   min-width: 0;
   padding-bottom: var(--space-6);
+}
+
+/* Covers the outgoing page while the next one loads. */
+.route-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 60vh;
+  padding-top: 18vh;
+  background-color: var(--color-bg);
 }
 
 @media (min-width: 1024px) {

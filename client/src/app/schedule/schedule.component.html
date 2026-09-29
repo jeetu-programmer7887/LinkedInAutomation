@@ -16,7 +16,8 @@
     title="Search the web now for new ideas"
   >
     <span>{{ refreshing ? 'Researching… up to 30s' : 'Get fresh ideas' }}</span>
-    <span class="icon i-refresh-cw" [class.spin]="refreshing"></span>
+    <app-loader *ngIf="refreshing" size="sm"></app-loader>
+    <span class="icon i-refresh-cw" *ngIf="!refreshing"></span>
   </button>
 </header>
 
@@ -28,6 +29,7 @@
   </label>
   <span class="muted timezone" *ngIf="overview">{{ overview.settings.timezone }}</span>
   <button type="submit" class="btn-sm" [disabled]="savingTime || timeUnchanged" title="Save the daily research time">
+    <app-loader *ngIf="savingTime" size="sm"></app-loader>
     {{ savingTime ? 'Saving…' : timeSaved ? 'Saved' : 'Save time' }}
   </button>
   <span class="muted research-hint">Every day at this time the app searches what's trending in your niche and saves 3 fresh ideas here.</span>
@@ -38,12 +40,13 @@
   <span class="icon i-circle-alert"></span>The last research run failed: {{ lastRunFailure }}
 </p>
 
-<p class="placeholder" *ngIf="loading && !batch">Loading ideas…</p>
+<app-loader *ngIf="loading && !batch" size="lg" label="Loading ideas…" block></app-loader>
 
 <p class="placeholder" *ngIf="!loading && !batch">
   No ideas yet. They'll appear after the daily research runs, or click <strong>Get fresh ideas</strong> now.
 </p>
 
+<app-loader *ngIf="refreshing && batch" size="md" label="Researching what's trending… up to 30s" block></app-loader>
 <div class="ruled-grid ideas" *ngIf="batch" [class.stale]="refreshing">
   <article class="idea" *ngFor="let idea of batch.ideas; let i = index">
     <div class="idea-top">

@@ -86,7 +86,7 @@
         <div class="step-title"><span class="step-num">02</span><h2>Brief</h2></div>
       </div>
 
-      <p class="muted" *ngIf="ideaLoading">Loading idea…</p>
+      <app-loader *ngIf="ideaLoading" size="md" label="Loading idea…" block></app-loader>
 
       <div class="idea-banner" *ngIf="idea">
         <div class="idea-banner-head">
@@ -130,7 +130,8 @@
 
       <button type="button" class="btn-ink btn-block btn-lg generate" (click)="generate()" [disabled]="generating">
         <span>{{ generateLabel }}</span>
-        <span class="icon" [class.spin]="generating" [ngClass]="generating ? 'i-refresh-cw' : 'i-sparkles'"></span>
+        <app-loader *ngIf="generating" size="sm"></app-loader>
+        <span class="icon i-sparkles" *ngIf="!generating"></span>
       </button>
       <span class="hint">{{ generateHint }}</span>
     </section>
@@ -143,6 +144,7 @@
           {{ caption.length | number }} / {{ captionLimit | number }}
         </span>
       </div>
+      <div class="caption-wrap">
       <textarea
         class="caption-input"
         rows="11"
@@ -152,6 +154,10 @@
         aria-label="Caption"
         placeholder="Your generated caption lands here — edit it freely before posting."
       ></textarea>
+        <div class="caption-loading" *ngIf="generating">
+          <app-loader size="md" label="Writing your caption…"></app-loader>
+        </div>
+      </div>
     </section>
 
     <!-- 04 Media -->
@@ -246,9 +252,10 @@
       </label>
 
       <button type="submit" class="primary btn-block btn-lg send" [disabled]="publishing">
+        <app-loader *ngIf="publishing" size="sm"></app-loader>
         <ng-container *ngIf="publishMode === 'now'">{{ publishing ? 'Posting…' : 'Post now' }}</ng-container>
         <ng-container *ngIf="publishMode === 'schedule'">{{ publishing ? 'Scheduling…' : 'Schedule post' }}</ng-container>
-        <span class="icon i-arrow-right"></span>
+        <span class="icon i-arrow-right" *ngIf="!publishing"></span>
       </button>
     </section>
 
