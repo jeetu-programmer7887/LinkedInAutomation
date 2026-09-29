@@ -132,7 +132,7 @@
       <div class="activity-head"><h2>Activity</h2></div>
       <p class="placeholder" *ngIf="!summary.activity.length">Nothing yet — activity appears as you post, schedule and research.</p>
       <ol class="activity-list">
-        <li *ngFor="let item of summary.activity" [attr.data-type]="item.type">
+        <li *ngFor="let item of summary.activity | slice: 0 : 10" [attr.data-type]="item.type">
           <span class="activity-dot" aria-hidden="true"></span>
           <div>
             <p>{{ item.message }}</p>

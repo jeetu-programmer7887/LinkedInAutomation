@@ -5,7 +5,7 @@ import Activity from '../models/Activity.js';
 const router = express.Router();
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const RECENT_ACTIVITY = 30;
+const RECENT_ACTIVITY = 10;
 
 // { key: count } from a $group on `field`, with missing values under "unknown".
 async function countBy(field) {
@@ -25,7 +25,11 @@ router.get('/', async (req, res) => {
     countBy('source'),
     Post.countDocuments({ createdAt: { $gte: new Date(now - 7 * DAY_MS) } }),
     Post.countDocuments({ createdAt: { $gte: new Date(now - 30 * DAY_MS) } }),
-    Activity.find().sort({ createdAt: -1 }).limit(RECENT_ACTIVITY),
+    // Only the newest few, and only the fields the feed renders.
+    Activity.find({}, 'type message createdAt')
+      .sort({ createdAt: -1 })
+      .limit(RECENT_ACTIVITY)
+      .lean(),
   ]);
 
   res.json({ total, byStatus, byType, bySource, last7Days, last30Days, activity });
