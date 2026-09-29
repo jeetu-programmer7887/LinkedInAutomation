@@ -15,7 +15,9 @@ export const STATUS_LABELS: Partial<Record<PostStatus, string>> = {
   cancelled: 'Cancelled',
 };
 
-export function excerpt(text: string, max = 160): string {
-  const flat = text.replace(/\s+/g, ' ').trim();
+// Tolerates a missing caption (some older posts have no content.text): a
+// throw here would abort change detection and blank the rest of the page.
+export function excerpt(text: string | null | undefined, max = 160): string {
+  const flat = (text ?? '').replace(/\s+/g, ' ').trim();
   return flat.length > max ? `${flat.slice(0, max).trimEnd()}…` : flat;
 }

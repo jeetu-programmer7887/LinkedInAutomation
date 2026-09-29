@@ -18,9 +18,25 @@
 
 .brand {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
   color: var(--color-text);
   text-decoration: none;
+}
+
+.brand-logo {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: contain;
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 .brand:hover { color: var(--color-text); }
 .brand:hover .brand-name { color: var(--color-accent); }
@@ -181,7 +197,9 @@
     border-bottom: 2px solid var(--color-divider);
   }
 
-  .brand { gap: 6px; }
+  .brand { gap: 12px; }
+  .brand-logo { width: 48px; height: 48px; }
+  .brand-text { gap: 6px; }
   .brand-kicker { display: block; }
   .brand-name { font-size: 22px; }
   .brand-name br { display: inline; }
