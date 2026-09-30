@@ -5,7 +5,7 @@ export const port = process.env.PORT || 3000;
 // may list several, comma-separated. Trailing slashes are stripped: CORS
 // compares origins exactly, and redirects append paths.
 // For local development: CLIENT_URL=http://localhost:4200
-export const allowedClientUrls = (process.env.CLIENT_URL || 'http://localhost:4200')
+export const allowedClientUrls = (process.env.CLIENT_URL || 'https://lin-automation.vercel.app' || 'http://localhost:4200')
   .split(',')
   .map((url) => url.trim().replace(/\/+$/, ''))
   .filter(Boolean);
