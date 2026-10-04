@@ -10,11 +10,23 @@ import { search } from './tavilyService.js';
 import { completeJson } from './aiService.js';
 import { logActivity } from './activityService.js';
 
-// Sized to stay inside Groq's free-tier tokens-per-minute budget.
-const TRENDING_RESULTS_PER_TOPIC = 5;
+// What the model sees is sized to stay inside Groq's free-tier
+// tokens-per-minute budget. Each search fetches a deeper pool than that
+// (Tavily bills per search, not per result) so articles recent batches
+// already used can be skipped and fresh ones take their place.
+const TRENDING_RESULTS_PER_TOPIC = 10;
 const MAX_TRENDING_ARTICLES = 14;
 const MAX_EVERGREEN_ARTICLES = 5;
+const EVERGREEN_RESULTS = MAX_EVERGREEN_ARTICLES + 5;
 const SNIPPET_CHARS = 350;
+
+const IDEAS_WANTED = 3;
+// Batches whose topics the model must avoid, and whose articles go to the
+// back of the queue. The weekly news window means consecutive runs see
+// mostly the same articles - without this the model has to invent
+// off-source titles to avoid recent topics, and grounding rejects them.
+const RECENT_TOPIC_BATCHES = 3;
+const RECENT_SOURCE_BATCHES = 5;
 
 // A run that has been "running" this long died with the server.
 const STALE_RUN_MS = 5 * 60_000;
@@ -72,7 +84,7 @@ async function research() {
     search(topic, { topic: 'news', timeRange: 'week', maxResults: TRENDING_RESULTS_PER_TOPIC, snippetChars: SNIPPET_CHARS })
   );
   const evergreenSearch = evergreenQuery
-    ? search(evergreenQuery, { topic: 'general', maxResults: MAX_EVERGREEN_ARTICLES + 2, snippetChars: SNIPPET_CHARS })
+    ? search(evergreenQuery, { topic: 'general', maxResults: EVERGREEN_RESULTS, snippetChars: SNIPPET_CHARS })
     : Promise.resolve([]);
 
   const [evergreenResult, ...trendingResults] = await Promise.allSettled([evergreenSearch, ...trendingSearches]);
@@ -82,19 +94,25 @@ async function research() {
 
   // Tag each article with the search that found it, then take them
   // round-robin across searches: a busy news topic (AI agents, say) would
-  // otherwise fill the whole article budget on its own.
-  const trending = roundRobin(
-    uniqueArticles(
-      trendingResults.flatMap((r, i) =>
-        r.status === 'fulfilled' ? r.value.map((a) => ({ ...a, query: profile.trendingTopics[i] })) : []
-      )
-    ),
-    (a) => a.query
-  ).slice(0, MAX_TRENDING_ARTICLES);
-  const evergreen = uniqueArticles(evergreenResult.status === 'fulfilled' ? evergreenResult.value : [], trending).slice(
+  // otherwise fill the whole article budget on its own. Articles recent
+  // batches already built ideas on only fill whatever room is left.
+  const isUsed = (a) => recentBatches.sourceUrls.has(a.url);
+  const trendingPool = uniqueArticles(
+    trendingResults.flatMap((r, i) =>
+      r.status === 'fulfilled' ? r.value.map((a) => ({ ...a, query: profile.trendingTopics[i] })) : []
+    )
+  );
+  const trending = [
+    ...roundRobin(trendingPool.filter((a) => !isUsed(a)), (a) => a.query),
+    ...roundRobin(trendingPool.filter(isUsed), (a) => a.query),
+  ].slice(0, MAX_TRENDING_ARTICLES);
+  const evergreenPool = uniqueArticles(evergreenResult.status === 'fulfilled' ? evergreenResult.value : [], trending);
+  const evergreen = [...evergreenPool.filter((a) => !isUsed(a)), ...evergreenPool.filter(isUsed)].slice(
     0,
     MAX_EVERGREEN_ARTICLES
   );
+  const freshCount = [...trending, ...evergreen].filter((a) => !isUsed(a)).length;
+  console.log(`[ideas] ${trending.length + evergreen.length} articles for the model, ${freshCount} not used by recent batches`);
 
   if (!trending.length && !evergreen.length) {
     throw new Error(failures[0]?.reason?.message || 'Tavily returned no articles for any topic.');
@@ -105,23 +123,78 @@ async function research() {
     ...trending.map((a) => ({ ...a, section: 'trending' })),
     ...evergreen.map((a) => ({ ...a, section: 'evergreen' })),
   ].map((a, i) => ({ ...a, id: i + 1 }));
+  if (process.env.IDEAS_DEBUG) {
+    articles.forEach((a) => console.log(`[ideas:debug] [${a.id}] ${a.section.padEnd(9)} ${a.title.slice(0, 90)}`));
+  }
 
-  const { ideas = [] } = await completeJson(buildIdeasPrompt(profile, articles, recentPosts, recentBatches.topics), {
+  const wanted = { trending: evergreen.length ? IDEAS_WANTED - 1 : IDEAS_WANTED, evergreen: evergreen.length ? 1 : 0 };
+  const selection = { wanted, recentTopics: recentBatches.topics };
+  const promptBase = { profile, recentPosts, recentTopics: recentBatches.topics };
+
+  const candidates = await askForIdeas({
+    ...promptBase,
+    articles,
+    counts: evergreen.length ? { trending: 4, evergreen: 2 } : { trending: 5, evergreen: 0 },
+  });
+  let result = selectIdeas(candidates, articles, selection);
+
+  // Top-up: the grounding checks rightly drop ideas the sources don't back,
+  // so ask once more - only for the missing kinds, only from articles no
+  // picked idea uses - instead of saving a short batch. The first round's
+  // candidates go first, so selection keeps every idea it already picked.
+  const missing = missingKinds(result, wanted);
+  if (missing.trending + missing.evergreen > 0) {
+    const usedUrls = new Set(result.flatMap((i) => i.sources.map((s) => s.url)));
+    const unusedArticles = articles.filter((a) => !usedUrls.has(a.url) && (missing[a.section] ?? 0) > 0);
+    console.log(
+      `[ideas] ${result.length}/${IDEAS_WANTED} ideas survived - asking for ` +
+        `${missing.trending} trending + ${missing.evergreen} evergreen more from ${unusedArticles.length} unused articles`
+    );
+    if (unusedArticles.length) {
+      try {
+        const extra = await askForIdeas({
+          ...promptBase,
+          articles: unusedArticles,
+          // Twice what's missing: some will fail grounding again.
+          counts: { trending: missing.trending * 2, evergreen: missing.evergreen * 2 },
+          chosenTopics: result.map((i) => i.topic),
+        });
+        const combined = selectIdeas([...candidates, ...extra], articles, selection);
+        // Greedy selection could in theory trade one pick for another;
+        // never let the top-up leave fewer ideas than before.
+        if (combined.length >= result.length) result = combined;
+      } catch (err) {
+        // A short batch beats a failed one (e.g. Groq's per-minute limit).
+        console.warn('[ideas] top-up failed, keeping the first round:', err.message);
+      }
+    }
+  }
+
+  if (!result.length) {
+    throw new Error('Groq returned no usable ideas (none were backed by the articles found). Try again.');
+  }
+  if (result.length < IDEAS_WANTED) {
+    console.warn(`[ideas] only ${result.length}/${IDEAS_WANTED} ideas after the top-up`);
+  }
+
+  return { ideas: result, articleCount: articles.length, evergreenQuery };
+}
+
+function askForIdeas(prompt) {
+  return completeJson(buildIdeasPrompt(prompt), {
     // Lower than the writing calls: this step is selection and extraction,
     // where creativity mostly shows up as invented detail.
     temperature: 0.5,
     maxTokens: 4000,
-  });
+  }).then(({ ideas }) => (Array.isArray(ideas) ? ideas : []));
+}
 
-  const result = selectIdeas(ideas, articles, {
-    wanted: { trending: evergreen.length ? 2 : 3, evergreen: evergreen.length ? 1 : 0 },
-    recentTopics: recentBatches.topics,
-  });
-  if (!result.length) {
-    throw new Error('Groq returned no usable ideas (none were backed by the articles found). Try again.');
-  }
-
-  return { ideas: result, articleCount: articles.length, evergreenQuery };
+function missingKinds(picked, wanted) {
+  const have = (kind) => picked.filter((i) => i.kind === kind).length;
+  return {
+    trending: Math.max(0, wanted.trending - have('trending')),
+    evergreen: Math.max(0, wanted.evergreen - have('evergreen')),
+  };
 }
 
 // Share of a topic's words that marks it as a repeat of a recent idea.
@@ -228,10 +301,15 @@ async function recentPostTexts() {
 }
 
 async function recentIdeaTopics() {
-  const batches = await IdeaBatch.find({ status: 'done' }).sort({ createdAt: -1 }).limit(3).select('ideas.topic evergreenQuery');
+  const batches = await IdeaBatch.find({ status: 'done' })
+    .sort({ createdAt: -1 })
+    .limit(RECENT_SOURCE_BATCHES)
+    .select('ideas.topic ideas.sources.url evergreenQuery');
+  const topicBatches = batches.slice(0, RECENT_TOPIC_BATCHES);
   return {
-    topics: batches.flatMap((b) => b.ideas.map((i) => i.topic)),
-    evergreenQueries: batches.map((b) => b.evergreenQuery).filter(Boolean),
+    topics: topicBatches.flatMap((b) => b.ideas.map((i) => i.topic)),
+    evergreenQueries: topicBatches.map((b) => b.evergreenQuery).filter(Boolean),
+    sourceUrls: new Set(batches.flatMap((b) => b.ideas.flatMap((i) => i.sources.map((s) => s.url))).filter(Boolean)),
   };
 }
 
@@ -246,11 +324,19 @@ const STOP_WORDS = new Set(
   )
 );
 
+// Both sides of every comparison (idea vs. its articles) go through this,
+// so it only has to be consistent, not linguistically exact:
+// - any dash splits a compound. The model often writes U+2011 (non-breaking
+//   hyphen) where articles use "-"; keeping "-" inside words made
+//   "self‑hosted" (title) and "self-hosted" (article) never match, which
+//   failed good ideas at 0%;
+// - a plain plural "s" is dropped, so "agents" matches "agent".
 function contentWords(text) {
   return String(text)
     .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, ' ')
+    .replace(/[^a-z0-9\s]/g, ' ')
     .split(/\s+/)
+    .map((w) => (w.length > 4 && w.endsWith('s') && !w.endsWith('ss') ? w.slice(0, -1) : w))
     .filter((w) => w.length >= 4 && !STOP_WORDS.has(w));
 }
 
@@ -272,7 +358,9 @@ function cleanIdea(raw, articles, usedSources) {
     .filter((a) => a && a.section === kind && !usedSources.has(a.url))
     .slice(0, 3);
   if (!raw?.topic) return { rejected: 'no topic' };
-  if (!cited.length) return { rejected: 'cites no unused article from its own section' };
+  if (!cited.length) {
+    return { rejected: `cites no unused article from its own section (sourceIds: ${JSON.stringify(raw?.sourceIds ?? null)})` };
+  }
 
   const citedText = cited.map((a) => `${a.title} ${a.content}`).join(' ');
   const citedWords = new Set(contentWords(citedText));
@@ -286,7 +374,9 @@ function cleanIdea(raw, articles, usedSources) {
   // their facts under a different subject.
   const topicWords = contentWords(raw.topic);
   const topicShare = topicWords.length ? topicWords.filter((w) => citedWords.has(w)).length / topicWords.length : 0;
-  if (topicShare < MIN_TOPIC_SHARE) return { rejected: `title not about its sources (${Math.round(topicShare * 100)}% match)` };
+  if (topicShare < MIN_TOPIC_SHARE) {
+    return { rejected: `title not about its sources (${Math.round(topicShare * 100)}% match with [${cited.map((a) => a.id)}])` };
+  }
 
   const keyPoints = (raw.keyPoints || [])
     .map((p) => String(p).trim())
@@ -318,7 +408,12 @@ function cleanIdea(raw, articles, usedSources) {
   };
 }
 
-function buildIdeasPrompt(profile, articles, recentPosts, recentTopics) {
+/**
+ * counts: how many candidates of each kind to ask for.
+ * chosenTopics: ideas already picked this run (top-up call) - avoided like
+ * recent topics, so the extra candidates cover something else.
+ */
+function buildIdeasPrompt({ profile, articles, recentPosts, recentTopics, counts, chosenTopics = [] }) {
   const list = (items, empty = '(none)') => (items.length ? items.map((i) => `- ${i}`).join('\n') : empty);
   const section = (name) =>
     articles
@@ -329,7 +424,11 @@ function buildIdeasPrompt(profile, articles, recentPosts, recentTopics) {
           `${a.query ? ` - search: "${a.query}"` : ''}\n${a.content}`
       )
       .join('\n\n') || '(no articles)';
-  const hasEvergreen = articles.some((a) => a.section === 'evergreen');
+  const asks = [
+    counts.trending && `${counts.trending} with kind "trending" built from the trending articles`,
+    counts.evergreen && `${counts.evergreen} with kind "evergreen" built from the evergreen concept articles`,
+  ].filter(Boolean);
+  const total = counts.trending + counts.evergreen;
 
   return `You find LinkedIn post ideas for one person. You are NOT writing the posts - only the ideas, with the research behind them.
 
@@ -357,9 +456,16 @@ ${list(recentPosts)}
 
 Already suggested recently - pick different topics:
 ${list(recentTopics)}
-
+${
+  chosenTopics.length
+    ? `
+Already chosen in this run - every new idea must be about a different subject:
+${list(chosenTopics)}
+`
+    : ''
+}
 TASK
-Return ${hasEvergreen ? '6 candidate ideas: 4 with kind "trending" built from the trending articles, then 2 with kind "evergreen" built from the evergreen concept articles' : '5 candidate ideas with kind "trending"'}.
+Return ${total} candidate ideas: ${asks.join(', then ')}.
 Rank each kind best first: most likely to perform well with this audience, and where the author can say something specific.
 
 Every idea must be about what its cited articles are actually about. If no article covers a subject, do not suggest it - never build an idea or a key point from the author's opinions or facts.
